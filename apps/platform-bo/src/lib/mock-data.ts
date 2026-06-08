@@ -32,6 +32,26 @@ export const HOSPITALS: Hospital[] = [
   { id:12, name:'방배탑성형외과',   nameJa:'バンベタップ',         url:'(온보딩 중)',             plan:'Basic',      status:'onboarding', inq:0,  expire:'-',          manager:'김운영', clinicType:'성형외과', specialty:'안면윤곽' },
 ]
 
+// ── 온보딩 9단계 정의 ──────────────────────────────────────
+export const ONBOARDING_STEPS = [
+  { step: 1, name: '자동 분석',     desc: 'URL 크롤링 · 이미지 추출' },
+  { step: 2, name: '전략 산출',     desc: 'AI 기획안 · SEO 키워드' },
+  { step: 3, name: '디자인',        desc: '템플릿 선택' },
+  { step: 4, name: '이미지',        desc: '이미지 업로드' },
+  { step: 5, name: '카피 검수',     desc: '일본어 재집필 확인' },
+  { step: 6, name: '컴플라이언스',  desc: '광고법 5종 검사' },
+  { step: 7, name: '퍼널 연결',     desc: 'LINE · CRM · 팔로잉' },
+  { step: 8, name: 'SEO · AEO',    desc: '검색 · AI 인용 최적화' },
+  { step: 9, name: '미리보기 · 게시', desc: '배포' },
+] as const
+
+// 온보딩 중인 병원의 현재 진행 단계 (hospital id → currentStep)
+export const ONBOARDING_PROGRESS: Record<number, number> = {
+  10: 3,  // 이수프리마 — 디자인 단계
+  11: 6,  // 사당뷰성형외과 — 컴플라이언스 단계
+  12: 1,  // 방배탑성형외과 — 자동 분석 단계
+}
+
 export const PLAN_BADGE: Record<HospitalPlan, string> = {
   Enterprise: 'badge bdg-blue',
   Pro:        'badge bdg-navy',
