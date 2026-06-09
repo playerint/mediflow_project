@@ -1,11 +1,25 @@
 'use client'
-import { useState } from 'react'
-import { hospital, doctors, treatments, cases, reviews, faqs } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import {
+  getHospitalInfo, getDoctors, getTreatments, getCases, getReviews, getFaqs,
+  type HospitalInfo,
+} from '@/lib/api'
+
+const doctors    = getDoctors()
+const treatments = getTreatments()
+const cases      = getCases()
+const reviews    = getReviews()
+const faqs       = getFaqs()
 
 export default function HospitalSite() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [openFaq,       setOpenFaq]       = useState<number | null>(null)
+  const [menuOpen,      setMenuOpen]      = useState(false)
   const [activeConcern, setActiveConcern] = useState<number | null>(null)
+  const [hospital,      setHospital]      = useState<HospitalInfo | null>(null)
+
+  useEffect(() => {
+    getHospitalInfo().then(setHospital)
+  }, [])
 
   const concerns = [
     { emoji: '😰', label: '傷跡が不安', answer: '埋没法・最小切開で目立たない仕上がり。術後ケアも完全日本語サポートです。' },
@@ -15,6 +29,14 @@ export default function HospitalSite() {
     { emoji: '✈️', label: '交通・宿泊', answer: '仁川空港から約60分。提携ホテルや送迎サービスもご案内できます。' },
     { emoji: '🏥', label: '安全性は？', answer: '全医師が韓国専門医資格取得済み。清潔・安全な医療環境を徹底しています。' },
   ]
+
+  if (!hospital) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fdf2f8' }}>
+        <p style={{ color: '#be185d', fontFamily: 'sans-serif' }}>読み込み中…</p>
+      </div>
+    )
+  }
 
   return (
     <>
