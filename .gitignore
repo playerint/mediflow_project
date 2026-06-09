@@ -46,6 +46,9 @@ env/
 *.egg-info/
 dist/
 .pytest_cache/
+*.db
+*_log.txt
+startup_error.txt
 
 # ──────────────────────────────────────────
 # IDE / 에디터
