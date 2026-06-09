@@ -81,3 +81,87 @@ export async function getMyHospital(): Promise<HospitalInfoDto> {
   if (!res.ok) throw new Error(`병원 정보 조회 실패 (${res.status})`)
   return res.json()
 }
+
+// ── 환자 (병원별 DB) ──────────────────────────────────────────
+export interface PatientDto {
+  id:                 number
+  nameJa:             string
+  nameKo:             string | null
+  email:              string | null
+  phone:              string | null
+  age:                number | null
+  gender:             string | null
+  country:            string
+  preferredTreatment: string | null
+  status:             string
+  createdAt:          string
+}
+
+export async function getPatients(): Promise<PatientDto[]> {
+  const res = await fetch(`${BASE}/api/v1/hospital/patients`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`환자 목록 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+// ── 상담 문의 (병원별 DB) ─────────────────────────────────────
+export interface ConsultationDto {
+  id:            number
+  patientId:     number
+  patientNameJa: string
+  channel:       string
+  treatment:     string | null
+  message:       string | null
+  status:        string
+  assignedTo:    string | null
+  createdAt:     string
+  repliedAt:     string | null
+}
+
+export async function getConsultations(status?: string): Promise<ConsultationDto[]> {
+  const url = status
+    ? `${BASE}/api/v1/hospital/consultations?status=${encodeURIComponent(status)}`
+    : `${BASE}/api/v1/hospital/consultations`
+  const res = await fetch(url, { cache: 'no-store', headers: authHeaders() })
+  if (!res.ok) throw new Error(`상담 목록 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function getConsultationStats(): Promise<Record<string, number>> {
+  const res = await fetch(`${BASE}/api/v1/hospital/consultations/stats`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`상담 통계 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function updateConsultationStatus(id: number, status: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/hospital/consultations/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error(`상태 변경 실패 (${res.status})`)
+}
+
+// ── 예약 (병원별 DB) ─────────────────────────────────────────
+export interface BookingDto {
+  id:            number
+  patientId:     number
+  patientNameJa: string
+  treatment:     string | null
+  doctor:        string | null
+  scheduledAt:   string
+  status:        string
+  notes:         string | null
+  createdAt:     string
+}
+
+export async function getBookings(): Promise<BookingDto[]> {
+  const res = await fetch(`${BASE}/api/v1/hospital/bookings`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`예약 목록 조회 실패 (${res.status})`)
+  return res.json()
+}

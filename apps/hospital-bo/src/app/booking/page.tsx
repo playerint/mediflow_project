@@ -1,72 +1,105 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  BOOKINGS,
-  BOOKING_STATUS_LABEL, BOOKING_STATUS_BADGE, BOOKING_TYPE_COLOR,
-  type Booking, type BookingStatus, type BookingType,
-} from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { getBookings, type BookingDto } from '@/lib/api'
 
-// 이번 주 날짜 7개 생성 (기준: 2026-06-08 월요일)
-const WEEK_START = '2026-06-08'
-const WEEK_DAYS: { date: string; label: string; day: string }[] = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(WEEK_START)
-  d.setDate(d.getDate() + i)
-  const yyyy = d.getFullYear()
-  const mm   = String(d.getMonth() + 1).padStart(2, '0')
-  const dd   = String(d.getDate()).padStart(2, '0')
-  return {
-    date:  `${yyyy}-${mm}-${dd}`,
-    label: `${mm}/${dd}`,
-    day:   ['월', '화', '수', '목', '금', '토', '일'][d.getDay() === 0 ? 6 : d.getDay() - 1],
-  }
-})
+// 오늘을 기준으로 이번 주 7일 생성
+function buildWeek() {
+  const today = new Date()
+  // 월요일 기준으로 정렬
+  const monday = new Date(today)
+  const day = today.getDay() === 0 ? 6 : today.getDay() - 1
+  monday.setDate(today.getDate() - day)
 
-type ViewMode = 'week' | 'list'
-type FilterStatus = 'all' | BookingStatus
-
-const CHANNEL_STYLE: Record<string, { bg: string; color: string }> = {
-  LINE:    { bg: '#D1FAE5', color: '#065F46' },
-  '사이트폼': { bg: '#EFF6FF', color: '#1D4ED8' },
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    const yyyy = d.getFullYear()
+    const mm   = String(d.getMonth() + 1).padStart(2, '0')
+    const dd   = String(d.getDate()).padStart(2, '0')
+    return {
+      date:  `${yyyy}-${mm}-${dd}`,
+      label: `${mm}/${dd}`,
+      day:   ['월', '화', '수', '목', '금', '토', '일'][i],
+    }
+  })
 }
 
+const WEEK_DAYS = buildWeek()
+
+function toDateStr(iso: string) { return iso.slice(0, 10) }
+function toTimeStr(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  pending:   '확정 대기',
+  confirmed: '확정',
+  completed: '완료',
+  cancelled: '취소',
+}
+const STATUS_BADGE: Record<string, string> = {
+  pending:   'badge bdg-yellow',
+  confirmed: 'badge bdg-blue',
+  completed: 'badge bdg-green',
+  cancelled: 'badge',
+}
+
+type ViewMode    = 'week' | 'list'
+type FilterStatus = 'all' | string
+
 export default function BookingPage() {
-  const [selectedDate, setSelectedDate] = useState('2026-06-08')
+  const todayStr = WEEK_DAYS.find(d => d.date === new Date().toISOString().slice(0, 10))?.date ?? WEEK_DAYS[0].date
+
   const [view,         setView]         = useState<ViewMode>('week')
+  const [selectedDate, setSelectedDate] = useState(todayStr)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
-  const [selected,     setSelected]     = useState<Booking | null>(null)
+  const [selected,     setSelected]     = useState<BookingDto | null>(null)
+  const [bookings,     setBookings]     = useState<BookingDto[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
 
-  const today = '2026-06-08'
+  useEffect(() => { loadData() }, [])
 
-  // 주간 탭 기준 필터
+  async function loadData() {
+    try {
+      setLoading(true)
+      setBookings(await getBookings())
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '데이터 로드 실패')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const dayBookings = (date: string) =>
-    BOOKINGS.filter(b => b.date === date).sort((a, b) => a.time.localeCompare(b.time))
+    bookings.filter(b => toDateStr(b.scheduledAt) === date)
+           .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
 
-  // 목록 뷰 기준 필터
-  const listBookings = BOOKINGS
+  const listBookings = bookings
     .filter(b => filterStatus === 'all' || b.status === filterStatus)
-    .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
 
-  // KPI
-  const todayCount     = dayBookings(today).length
-  const pendingCount   = BOOKINGS.filter(b => b.status === 'pending').length
-  const thisWeekCount  = WEEK_DAYS.reduce((s, d) => s + dayBookings(d.date).length, 0)
-  const thisMonthCount = BOOKINGS.filter(b => b.date.startsWith('2026-06')).length
+  const todayCount    = dayBookings(todayStr).length
+  const pendingCount  = bookings.filter(b => b.status === 'pending').length
+  const weekCount     = WEEK_DAYS.reduce((s, d) => s + dayBookings(d.date).length, 0)
+  const thisMonth     = new Date().toISOString().slice(0, 7)
+  const monthCount    = bookings.filter(b => b.scheduledAt.startsWith(thisMonth)).length
 
-  const currentDayBookings = view === 'week' ? dayBookings(selectedDate) : listBookings
+  const current = view === 'week' ? dayBookings(selectedDate) : listBookings
 
   return (
     <>
       <div className="topbar">
         <div className="topbar-left">
           <span className="topbar-title">예약 관리</span>
-          {pendingCount > 0 && (
-            <span className="badge bdg-blue">{pendingCount}건 확정 대기</span>
-          )}
+          {pendingCount > 0 && <span className="badge bdg-blue">{pendingCount}건 확정 대기</span>}
         </div>
         <div className="topbar-right">
-          {/* 뷰 전환 */}
           <div style={{ display: 'flex', gap: 4, background: 'var(--s100)', borderRadius: 8, padding: 3 }}>
+            {(['week', '주간'] as const) && null}
             {([['week', '주간'], ['list', '목록']] as [ViewMode, string][]).map(([v, l]) => (
               <button
                 key={v}
@@ -78,68 +111,66 @@ export default function BookingPage() {
                   color: view === v ? 'var(--navy)' : 'var(--s500)',
                   fontWeight: view === v ? 600 : 400,
                   boxShadow: view === v ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
-                  transition: 'all .15s',
                 }}
               >
                 {l}
               </button>
             ))}
           </div>
-          <button className="btn btn-primary btn-sm">+ 예약 등록</button>
+          <button className="btn btn-sm" onClick={loadData}>새로고침</button>
         </div>
       </div>
 
       <div className="content fade">
+        {error && (
+          <div className="badge bdg-red" style={{ marginBottom: 12, padding: '8px 14px', fontSize: 12 }}>
+            ⚠ {error}
+          </div>
+        )}
 
-        {/* KPI 4개 */}
+        {/* KPI */}
         <div className="kpi-grid" style={{ marginBottom: 18 }}>
           {[
-            { label: '📅 오늘 예약',      value: todayCount,    unit: '건' },
-            { label: '📆 이번 주 예약',   value: thisWeekCount, unit: '건' },
-            { label: '⏳ 확정 대기',      value: pendingCount,  unit: '건' },
-            { label: '🗓 이번 달 예약',   value: thisMonthCount, unit: '건' },
+            { label: '오늘 예약',    value: todayCount },
+            { label: '이번 주 예약', value: weekCount },
+            { label: '확정 대기',   value: pendingCount },
+            { label: '이번 달 예약', value: monthCount },
           ].map(k => (
             <div key={k.label} className="kpi-card">
               <div className="kpi-label">{k.label}</div>
-              <div className="kpi-value">{k.value}<span className="kpi-unit">{k.unit}</span></div>
+              <div className="kpi-value">{loading ? '…' : k.value}<span className="kpi-unit">건</span></div>
             </div>
           ))}
         </div>
 
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-
-          {/* 왼쪽: 일정 영역 */}
           <div style={{ flex: 1, minWidth: 0 }}>
 
-            {/* 주간 탭 (week 모드) */}
+            {/* 주간 탭 */}
             {view === 'week' && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 {WEEK_DAYS.map(d => {
-                  const cnt     = dayBookings(d.date).length
-                  const isToday = d.date === today
-                  const isSel   = d.date === selectedDate
+                  const cnt   = dayBookings(d.date).length
+                  const isTdy = d.date === todayStr
+                  const isSel = d.date === selectedDate
                   return (
                     <button
                       key={d.date}
                       onClick={() => setSelectedDate(d.date)}
                       style={{
-                        flex: 1, padding: '10px 6px', cursor: 'pointer',
-                        borderRadius: 10, fontFamily: 'inherit',
-                        background: isSel ? 'var(--navy)' : isToday ? 'var(--navy-l)' : 'var(--s0)',
-                        border: `1px solid ${isSel ? 'var(--navy)' : isToday ? 'var(--blue-b)' : 'var(--s200)'}`,
-                        transition: 'all .15s',
+                        flex: 1, padding: '10px 6px', cursor: 'pointer', borderRadius: 10, fontFamily: 'inherit',
+                        background: isSel ? 'var(--navy)' : isTdy ? 'var(--navy-l)' : 'var(--s0)',
+                        border: `1px solid ${isSel ? 'var(--navy)' : isTdy ? 'var(--blue-b)' : 'var(--s200)'}`,
                       }}
                     >
                       <div style={{ fontSize: 10, color: isSel ? 'rgba(255,255,255,.6)' : 'var(--s400)', marginBottom: 3 }}>{d.day}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: isSel ? '#fff' : isToday ? 'var(--navy)' : 'var(--s900)' }}>{d.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: isSel ? '#fff' : isTdy ? 'var(--navy)' : 'var(--s900)' }}>{d.label}</div>
                       {cnt > 0 && (
                         <div style={{
-                          marginTop: 5, width: 18, height: 18,
-                          borderRadius: '50%', fontSize: 10, fontWeight: 700,
-                          background: isSel ? 'rgba(255,255,255,.2)' : 'var(--navy)',
-                          color: isSel ? '#fff' : '#fff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          margin: '5px auto 0',
+                          marginTop: 5, width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 700,
+                          background: 'var(--navy)', color: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '5px auto 0',
+                          opacity: isSel ? .5 : 1,
                         }}>
                           {cnt}
                         </div>
@@ -150,24 +181,22 @@ export default function BookingPage() {
               </div>
             )}
 
-            {/* 목록 뷰 필터 */}
+            {/* 목록 필터 */}
             {view === 'list' && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-                {([['all','전체'], ['confirmed','확정'], ['pending','대기'], ['completed','완료'], ['cancelled','취소']] as [FilterStatus, string][]).map(([k, l]) => (
-                  <button
-                    key={k}
-                    onClick={() => setFilterStatus(k)}
-                    className={`pill${filterStatus === k ? ' on' : ''}`}
-                  >
+                {[['all','전체'], ['confirmed','확정'], ['pending','대기'], ['completed','완료'], ['cancelled','취소']].map(([k, l]) => (
+                  <button key={k} onClick={() => setFilterStatus(k)} className={`pill${filterStatus === k ? ' on' : ''}`}>
                     {l}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* 예약 목록 */}
+            {/* 예약 테이블 */}
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {currentDayBookings.length === 0 ? (
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: 48, color: 'var(--s400)' }}>로딩 중…</div>
+              ) : current.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--s400)', fontSize: 13 }}>
                   {view === 'week' ? '이 날 예약이 없습니다' : '해당 조건의 예약이 없습니다'}
                 </div>
@@ -178,50 +207,36 @@ export default function BookingPage() {
                       <th style={{ width: 60 }}>시간</th>
                       {view === 'list' && <th>날짜</th>}
                       <th>환자</th>
-                      <th>유형</th>
-                      <th>채널</th>
+                      <th>시술</th>
+                      <th>담당의</th>
                       <th>상태</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentDayBookings.map(b => {
-                      const ch = CHANNEL_STYLE[b.channel] ?? { bg: 'var(--s100)', color: 'var(--s500)' }
-                      const isSelected = selected?.id === b.id
+                    {current.map(b => {
+                      const isSel = selected?.id === b.id
                       return (
                         <tr
                           key={b.id}
-                          onClick={() => setSelected(isSelected ? null : b)}
-                          style={{
-                            cursor: 'pointer',
-                            background: isSelected ? 'var(--navy-l)' : undefined,
-                          }}
+                          onClick={() => setSelected(isSel ? null : b)}
+                          style={{ cursor: 'pointer', background: isSel ? 'var(--navy-l)' : undefined }}
                         >
-                          <td style={{ fontWeight: 700, color: 'var(--navy)', fontSize: 13 }}>{b.time}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--navy)', fontSize: 13 }}>
+                            {toTimeStr(b.scheduledAt)}
+                          </td>
                           {view === 'list' && (
-                            <td style={{ fontSize: 12, color: 'var(--s500)' }}>{b.date}</td>
+                            <td style={{ fontSize: 12, color: 'var(--s500)' }}>{toDateStr(b.scheduledAt)}</td>
                           )}
                           <td>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{b.name}</div>
-                            <div style={{ fontSize: 11, color: 'var(--s400)', marginTop: 1 }}>{b.nameKana}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{b.patientNameJa}</div>
                           </td>
+                          <td style={{ fontSize: 12, color: 'var(--s700)' }}>{b.treatment ?? '-'}</td>
+                          <td style={{ fontSize: 12, color: 'var(--s500)' }}>{b.doctor ?? '-'}</td>
                           <td>
-                            <span style={{
-                              fontSize: 11, fontWeight: 700,
-                              color: BOOKING_TYPE_COLOR[b.type],
-                              background: `${BOOKING_TYPE_COLOR[b.type]}18`,
-                              padding: '2px 8px', borderRadius: 5,
-                            }}>
-                              {b.type}
+                            <span className={STATUS_BADGE[b.status] ?? 'badge'}>
+                              {STATUS_LABEL[b.status] ?? b.status}
                             </span>
-                          </td>
-                          <td>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: ch.bg, color: ch.color }}>
-                              {b.channel}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={BOOKING_STATUS_BADGE[b.status]}>{BOOKING_STATUS_LABEL[b.status]}</span>
                           </td>
                           <td>
                             {b.status === 'pending' && (
@@ -239,45 +254,39 @@ export default function BookingPage() {
             </div>
           </div>
 
-          {/* 오른쪽: 선택 예약 상세 */}
+          {/* 상세 패널 */}
           {selected && (
             <div className="card fade" style={{ width: 300, flexShrink: 0, padding: 0, overflow: 'hidden' }}>
-              {/* 헤더 */}
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--s100)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{selected.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--s400)', marginTop: 2 }}>{selected.nameKana}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{selected.patientNameJa}</div>
+                  <span className={STATUS_BADGE[selected.status] ?? 'badge'} style={{ marginTop: 4 }}>
+                    {STATUS_LABEL[selected.status] ?? selected.status}
+                  </span>
                 </div>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--s400)', lineHeight: 1 }}>×</button>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--s400)' }}>×</button>
               </div>
 
-              {/* 상세 정보 */}
               <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[
-                  { label: '날짜',  value: selected.date },
-                  { label: '시간',  value: selected.time },
-                  { label: '유형',  value: selected.type },
-                  { label: '채널',  value: selected.channel },
-                  { label: '상태',  value: BOOKING_STATUS_LABEL[selected.status] },
-                  ...(selected.note ? [{ label: '메모', value: selected.note }] : []),
+                  { label: '날짜',  value: toDateStr(selected.scheduledAt) },
+                  { label: '시간',  value: toTimeStr(selected.scheduledAt) },
+                  { label: '시술',  value: selected.treatment ?? '-' },
+                  { label: '담당의', value: selected.doctor ?? '-' },
+                  ...(selected.notes ? [{ label: '메모', value: selected.notes }] : []),
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ fontSize: 12, color: 'var(--s400)', width: 40, flexShrink: 0 }}>{row.label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--s400)', width: 48, flexShrink: 0 }}>{row.label}</span>
                     <span style={{ fontSize: 13, color: 'var(--s900)', flex: 1 }}>{row.value}</span>
                   </div>
                 ))}
               </div>
 
-              {/* 액션 버튼 */}
               <div style={{ padding: '12px 18px', borderTop: '1px solid var(--s100)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {selected.status === 'pending' && (
-                  <button className="btn btn-primary" style={{ justifyContent: 'center' }}>
-                    ✓ 예약 확정
-                  </button>
+                  <button className="btn btn-primary" style={{ justifyContent: 'center' }}>✓ 예약 확정</button>
                 )}
-                <button className="btn" style={{ justifyContent: 'center' }}>
-                  ✏ 예약 수정
-                </button>
+                <button className="btn" style={{ justifyContent: 'center' }}>✏ 예약 수정</button>
                 {selected.status !== 'cancelled' && selected.status !== 'completed' && (
                   <button className="btn btn-sm" style={{ justifyContent: 'center', color: 'var(--red)', borderColor: '#FCA5A5' }}>
                     취소 처리
