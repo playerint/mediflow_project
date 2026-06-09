@@ -21,3 +21,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# 임시 API 테스트용 JSON 파일
+test-*.json
