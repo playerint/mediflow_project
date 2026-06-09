@@ -1,5 +1,6 @@
 package io.mediflow.core.hospital.service;
 
+import io.mediflow.core.common.config.HospitalSchemaInitializer;
 import io.mediflow.core.common.exception.ResourceNotFoundException;
 import io.mediflow.core.hospital.dto.HospitalCreateRequest;
 import io.mediflow.core.hospital.dto.HospitalResponse;
@@ -17,8 +18,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class HospitalService {
 
-    private final HospitalRepository hospitalRepository;
-    private final OnboardingService  onboardingService;
+    private final HospitalRepository     hospitalRepository;
+    private final OnboardingService      onboardingService;
+    private final HospitalSchemaInitializer schemaInitializer;
 
     /** 전체 병원 목록 (본사 권한 전용) */
     public List<HospitalResponse> findAll() {
@@ -59,7 +61,8 @@ public class HospitalService {
                 .contractExpire(req.getContractExpire())
                 .build();
         Hospital saved = hospitalRepository.save(h);
-        onboardingService.create(saved.getId());   // 온보딩 레코드 자동 생성
+        onboardingService.create(saved.getId());        // 온보딩 레코드 자동 생성
+        schemaInitializer.createSchema(saved.getId());  // 병원 전용 스키마(환자DB) 생성
         return HospitalResponse.from(saved);
     }
 }

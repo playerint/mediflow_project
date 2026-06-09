@@ -34,19 +34,33 @@ public class AiServiceClient {
      */
     public AnalyzeResultDto analyze(Long hospitalId, String url) {
         try {
-            return restClient.post()
+            // Python 응답은 snake_case → 내부 DTO로 역직렬화 후 camelCase DTO로 변환
+            AiAnalyzeInternalResponse raw = restClient.post()
                     .uri("/analyze")
                     .body(new AiAnalyzeRequest(hospitalId, url))
                     .retrieve()
-                    .body(AnalyzeResultDto.class);
-        } catch (RestClientException e) {
+                    .body(AiAnalyzeInternalResponse.class);
+
+            if (raw == null) return fallbackAnalyze(hospitalId);
+
             return new AnalyzeResultDto(
-                    hospitalId,
-                    "성형외과",
-                    List.of("쌍꺼풀", "코성형", "지방흡입"),
-                    List.of("韓国 整形外科 おすすめ", "ソウル 二重まぶた クリニック", "韓国美容外科 日本語対応")
+                    raw.hospitalId(),
+                    raw.clinicType()          != null ? raw.clinicType()          : "의원",
+                    raw.specialties()         != null ? raw.specialties()         : List.of(),
+                    raw.suggestedKeywordsJa() != null ? raw.suggestedKeywordsJa() : List.of()
             );
+        } catch (RestClientException e) {
+            return fallbackAnalyze(hospitalId);
         }
+    }
+
+    private AnalyzeResultDto fallbackAnalyze(Long hospitalId) {
+        return new AnalyzeResultDto(
+                hospitalId,
+                "성형외과",
+                List.of("쌍꺼풀", "코성형", "지방흡입"),
+                List.of("韓国 整形外科 おすすめ", "ソウル 二重まぶた クリニック", "韓国美容外科 日本語対応")
+        );
     }
 
     /**
