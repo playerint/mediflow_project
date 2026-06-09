@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────
+# MEDIFLOW Core — 애플리케이션 설정
+# ⚠ 비밀값(DB 비밀번호, JWT 시크릿 등)은 절대 이 파일에 쓰지 말 것.
+#   환경변수 또는 .env 파일로 주입한다.
+# ─────────────────────────────────────────────────────────────
+spring:
+  application:
+    name: mediflow-core
+
+  datasource:
+    # 플랫폼 DB (병원 정보·온보딩·계약 등 운영 데이터)
+    url:               ${DB_PLATFORM_URL:jdbc:postgresql://localhost:5432/mediflow_platform}
+    username:          ${DB_PLATFORM_USERNAME:mediflow}
+    password:          ${DB_PLATFORM_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: update            # 운영: validate / 개발: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect:    org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: ${PORT:8080}
+
+# JWT 설정 (시크릿은 환경변수로 주입)
+mediflow:
+  jwt:
+    secret:        ${JWT_SECRET}
+    expiration-ms: 86400000       # 24시간
+
+  # AI 서비스 (Python FastAPI) 연동 URL
+  ai-service:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
