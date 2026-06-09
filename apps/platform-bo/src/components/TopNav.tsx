@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { clearToken } from '@/lib/api'
 
 type Role = 'super' | 'ops' | 'finance'
 
@@ -54,8 +55,14 @@ const MOCK_USER = { name: '김운영', role: 'super' as Role }
 
 export default function TopNav() {
   const pathname = usePathname()
+  const router   = useRouter()
   const user = MOCK_USER
   const { role } = user
+
+  function handleLogout() {
+    clearToken()
+    router.replace('/login')
+  }
 
   // 현재 경로에서 활성 메뉴 키 계산
   const activeKey = pathname === '/' ? 'dashboard' : (pathname.split('/')[1] ?? 'dashboard')
@@ -117,7 +124,7 @@ export default function TopNav() {
         <div className="sf-avatar">{user.name.charAt(0)}</div>
         <div className="sf-name">{user.name}</div>
         <span className={roleCls}>{roleLabel}</span>
-        <button className="sf-logout">🚪 로그아웃</button>
+        <button className="sf-logout" onClick={handleLogout}>🚪 로그아웃</button>
       </div>
     </aside>
   )

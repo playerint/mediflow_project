@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
+import { createHospital } from '@/lib/api'
 
 type Plan = 'Basic' | 'Pro' | 'Enterprise'
 
@@ -74,9 +75,11 @@ const cardSelectStyle = (selected: boolean) => ({
 
 export default function HospitalNewPage() {
   const router   = useRouter()
-  const [step, setStep]     = useState(1)
-  const [form, setForm]     = useState<FormData>(INITIAL_FORM)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  const [step, setStep]       = useState(1)
+  const [form, setForm]       = useState<FormData>(INITIAL_FORM)
+  const [errors, setErrors]   = useState<Partial<Record<keyof FormData, string>>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -103,10 +106,25 @@ export default function HospitalNewPage() {
   function next() { if (validate(step)) setStep(s => s + 1) }
   function prev() { setErrors({}); setStep(s => s - 1) }
 
-  function submit() {
-    // 나중에 실제 API POST로 교체
-    alert('병원 등록이 완료됐습니다. (목업)')
-    router.push('/hospitals')
+  async function submit() {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await createHospital({
+        nameKr:        form.nameKr,
+        nameJa:        form.nameJa || undefined,
+        clinicType:    form.clinicType,
+        specialty:     form.specialty || undefined,
+        plan:          form.plan as string,
+        managerName:   form.managerName,
+        managerEmail:  form.managerEmail,
+        contractStart: form.contractStart,
+      })
+      router.push('/hospitals')
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : '등록 중 오류가 발생했습니다.')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -333,7 +351,19 @@ export default function HospitalNewPage() {
                 <button className="btn" onClick={prev}>← 이전으로</button>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn">임시 저장</button>
-                  <button className="btn btn-primary" onClick={submit}>🏥 병원 등록 완료</button>
+                  {submitError && (
+                    <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>
+                      ⚠ {submitError}
+                    </div>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={submit}
+                    disabled={submitting}
+                    style={{ opacity: submitting ? .6 : 1 }}
+                  >
+                    {submitting ? '등록 중...' : '🏥 병원 등록 완료'}
+                  </button>
                 </div>
               </div>
             </>

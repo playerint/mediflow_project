@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
-import { HOSPITALS, PLAN_BADGE, STATUS_BADGE, STATUS_LABEL, type HospitalStatus } from '@/lib/mock-data'
+import { getHospitals, type HospitalDto } from '@/lib/api'
+import { PLAN_BADGE, STATUS_BADGE, STATUS_LABEL, type HospitalStatus } from '@/lib/mock-data'
 
 type FilterKey = 'all' | HospitalStatus
 
@@ -14,29 +15,45 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'paused',     label: '일시정지' },
 ]
 
-// 계약 만료일이 30일 이내인지 확인
-function isExpiringSoon(expire: string): boolean {
-  if (expire === '-') return false
+function isExpiringSoon(expire: string | null): boolean {
+  if (!expire) return false
   const diff = new Date(expire).getTime() - Date.now()
   return diff > 0 && diff < 30 * 86400000
 }
 
+function siteDisplay(siteUrl: string | null, status: string): string {
+  if (siteUrl) return siteUrl
+  return status === 'onboarding' ? '(온보딩 중)' : '-'
+}
+
 export default function HospitalsPage() {
   const router = useRouter()
-  const [filter, setFilter]   = useState<FilterKey>('all')
-  const [search, setSearch]   = useState('')
+  const [hospitals, setHospitals] = useState<HospitalDto[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState<string | null>(null)
+  const [filter, setFilter]       = useState<FilterKey>('all')
+  const [search, setSearch]       = useState('')
 
-  const filtered = HOSPITALS.filter(h => {
+  useEffect(() => {
+    getHospitals()
+      .then(setHospitals)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = hospitals.filter(h => {
     const matchFilter = filter === 'all' || h.status === filter
-    const matchSearch = !search || h.name.includes(search) || h.nameJa.includes(search)
+    const matchSearch = !search
+      || h.nameKr.includes(search)
+      || (h.nameJa ?? '').includes(search)
     return matchFilter && matchSearch
   })
 
   const counts: Record<FilterKey, number> = {
-    all:        HOSPITALS.length,
-    active:     HOSPITALS.filter(h => h.status === 'active').length,
-    onboarding: HOSPITALS.filter(h => h.status === 'onboarding').length,
-    paused:     HOSPITALS.filter(h => h.status === 'paused').length,
+    all:        hospitals.length,
+    active:     hospitals.filter(h => h.status === 'active').length,
+    onboarding: hospitals.filter(h => h.status === 'onboarding').length,
+    paused:     hospitals.filter(h => h.status === 'paused').length,
   }
 
   return (
@@ -69,6 +86,16 @@ export default function HospitalsPage() {
       </PageHeader>
 
       <div className="content">
+        {error && (
+          <div style={{
+            background: '#FEF2F2', border: '1px solid #FECACA',
+            borderRadius: 10, padding: '12px 16px',
+            color: '#DC2626', fontSize: 13, marginBottom: 16,
+          }}>
+            ⚠ 백엔드 연결 오류: {error} — 백엔드 서버(포트 8080)가 실행 중인지 확인하세요.
+          </div>
+        )}
+
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="table">
             <thead>
@@ -77,17 +104,22 @@ export default function HospitalsPage() {
                 <th>플랜</th>
                 <th>상태</th>
                 <th>사이트</th>
-                <th>이번 달 문의</th>
                 <th>계약 만료</th>
                 <th>담당자</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--s400)' }}>
-                    검색 결과가 없습니다.
+                  <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--s400)' }}>
+                    불러오는 중...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--s400)' }}>
+                    {error ? '데이터를 불러오지 못했습니다.' : '검색 결과가 없습니다.'}
                   </td>
                 </tr>
               ) : (
@@ -98,17 +130,29 @@ export default function HospitalsPage() {
                     style={{ cursor: 'pointer' }}
                   >
                     <td>
-                      <div style={{ fontWeight: 500, color: 'var(--s900)' }}>{h.name}</div>
+                      <div style={{ fontWeight: 500, color: 'var(--s900)' }}>{h.nameKr}</div>
                       <div style={{ fontSize: 12, color: 'var(--s400)' }}>{h.nameJa}</div>
                     </td>
-                    <td><span className={PLAN_BADGE[h.plan]}>{h.plan}</span></td>
-                    <td><span className={STATUS_BADGE[h.status]}>{STATUS_LABEL[h.status]}</span></td>
-                    <td style={{ fontSize: 12, color: 'var(--navy)', fontFamily: 'monospace' }}>{h.url}</td>
-                    <td style={{ fontWeight: 500 }}>{h.inq > 0 ? `${h.inq}건` : '-'}</td>
-                    <td style={{ color: isExpiringSoon(h.expire) ? 'var(--red)' : 'var(--s500)', fontWeight: isExpiringSoon(h.expire) ? 600 : 400 }}>
-                      {h.expire}
+                    <td>
+                      <span className={PLAN_BADGE[h.plan as keyof typeof PLAN_BADGE] ?? 'badge bdg-gray'}>
+                        {h.plan}
+                      </span>
                     </td>
-                    <td>{h.manager}</td>
+                    <td>
+                      <span className={STATUS_BADGE[h.status as HospitalStatus] ?? 'badge bdg-gray'}>
+                        {STATUS_LABEL[h.status as HospitalStatus] ?? h.status}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--navy)', fontFamily: 'monospace' }}>
+                      {siteDisplay(h.siteUrl, h.status)}
+                    </td>
+                    <td style={{
+                      color: isExpiringSoon(h.contractExpire) ? 'var(--red)' : 'var(--s500)',
+                      fontWeight: isExpiringSoon(h.contractExpire) ? 600 : 400,
+                    }}>
+                      {h.contractExpire ?? '-'}
+                    </td>
+                    <td>{h.managerName}</td>
                     <td>
                       <button
                         className="btn"
