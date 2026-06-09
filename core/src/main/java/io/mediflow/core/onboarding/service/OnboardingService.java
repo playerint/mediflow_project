@@ -3,6 +3,7 @@ package io.mediflow.core.onboarding.service;
 import io.mediflow.core.common.client.AiServiceClient;
 import io.mediflow.core.common.exception.ResourceNotFoundException;
 import io.mediflow.core.onboarding.dto.AnalyzeResultDto;
+import io.mediflow.core.onboarding.dto.ComplianceCheckResultDto;
 import io.mediflow.core.onboarding.dto.OnboardingResponse;
 import io.mediflow.core.onboarding.entity.Onboarding;
 import io.mediflow.core.onboarding.repository.OnboardingRepository;
@@ -78,6 +79,11 @@ public class OnboardingService {
         onboardingRepository.save(o);
 
         return result;
+    }
+
+    /** Step 6 — 콘텐츠를 ai-service에 보내 의료 광고법 위반 여부를 검사한다 */
+    public ComplianceCheckResultDto checkCompliance(Long hospitalId, String content) {
+        return aiServiceClient.checkCompliance(hospitalId, content);
     }
 
     private Onboarding getOnboarding(Long hospitalId) {

@@ -1,6 +1,7 @@
 package io.mediflow.core.onboarding.controller;
 
 import io.mediflow.core.onboarding.dto.AnalyzeResultDto;
+import io.mediflow.core.onboarding.dto.ComplianceCheckResultDto;
 import io.mediflow.core.onboarding.dto.OnboardingResponse;
 import io.mediflow.core.onboarding.service.OnboardingService;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,20 @@ public class OnboardingController {
     ) {
         String url = body.getOrDefault("url", "");
         return ResponseEntity.ok(onboardingService.analyze(hospitalId, url));
+    }
+
+    /**
+     * POST /api/v1/onboarding/hospitals/{hospitalId}/compliance
+     * Step 6 — 일본어 콘텐츠를 ai-service에 전달해 의료 광고법 위반 여부를 검사
+     * Body: { "content": "..."  }
+     */
+    @PostMapping("/hospitals/{hospitalId}/compliance")
+    public ResponseEntity<ComplianceCheckResultDto> checkCompliance(
+            @PathVariable Long hospitalId,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String content = body.getOrDefault("content", "");
+        return ResponseEntity.ok(onboardingService.checkCompliance(hospitalId, content));
     }
 
     /**

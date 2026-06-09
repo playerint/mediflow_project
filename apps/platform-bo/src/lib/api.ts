@@ -158,6 +158,24 @@ export async function analyzeOnboarding(hospitalId: number, url: string): Promis
   return res.json()
 }
 
+// ── Step 6 컴플라이언스 검사 ──────────────────────────────────
+export interface ComplianceResultDto {
+  hospitalId:  number
+  compliant:   boolean
+  violations:  { pattern: string; rule: string; severity: string }[]
+  suggestions: string[]
+}
+
+export async function checkOnboardingCompliance(hospitalId: number, content: string): Promise<ComplianceResultDto> {
+  const res = await fetch(`${BASE}/api/v1/onboarding/hospitals/${hospitalId}/compliance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) throw new Error(`컴플라이언스 검사 실패 (${res.status})`)
+  return res.json()
+}
+
 export async function createHospital(data: HospitalCreateDto): Promise<HospitalDto> {
   const res = await fetch(`${BASE}/api/v1/hospitals`, {
     method:  'POST',
