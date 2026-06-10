@@ -176,6 +176,35 @@ export async function checkOnboardingCompliance(hospitalId: number, content: str
   return res.json()
 }
 
+// ── 온보딩 단계 데이터 저장·조회 ─────────────────────────────
+export interface StepDataDto {
+  id:          number
+  hospitalId:  number
+  stepNumber:  number
+  data:        string        // JSON 문자열
+  completedAt: string | null
+  updatedAt:   string
+}
+
+export async function getStepData(hospitalId: number, stepNumber: number): Promise<StepDataDto | null> {
+  const res = await fetch(`${BASE}/api/v1/onboarding/hospitals/${hospitalId}/steps/${stepNumber}`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (res.status === 204) return null
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function saveStepData(hospitalId: number, stepNumber: number, data: unknown, complete = false): Promise<StepDataDto> {
+  const res = await fetch(`${BASE}/api/v1/onboarding/hospitals/${hospitalId}/steps/${stepNumber}`, {
+    method:  'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body:    JSON.stringify({ data: JSON.stringify(data), complete }),
+  })
+  if (!res.ok) throw new Error(`단계 데이터 저장 실패 (${res.status})`)
+  return res.json()
+}
+
 export async function createHospital(data: HospitalCreateDto): Promise<HospitalDto> {
   const res = await fetch(`${BASE}/api/v1/hospitals`, {
     method:  'POST',

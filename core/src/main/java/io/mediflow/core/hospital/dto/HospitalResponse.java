@@ -23,6 +23,11 @@ public class HospitalResponse {
     private LocalDate contractStart;
     private LocalDate contractExpire;
     private String siteUrl;
+    private String phone;
+    private String address;
+    private String hours;
+    private String lineId;
+    private String instagramId;
     private LocalDateTime createdAt;
 
     public static HospitalResponse from(Hospital h) {
@@ -39,6 +44,11 @@ public class HospitalResponse {
                 .contractStart(h.getContractStart())
                 .contractExpire(h.getContractExpire())
                 .siteUrl(h.getSiteUrl())
+                .phone(h.getPhone())
+                .address(h.getAddress())
+                .hours(h.getHours())
+                .lineId(h.getLineId())
+                .instagramId(h.getInstagramId())
                 .createdAt(h.getCreatedAt())
                 .build();
     }

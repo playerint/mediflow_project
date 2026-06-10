@@ -21,6 +21,11 @@ interface HospitalApiResponse {
   managerName:   string
   managerEmail:  string
   siteUrl:       string | null
+  phone:         string | null
+  address:       string | null
+  hours:         string | null
+  lineId:        string | null
+  instagramId:   string | null
 }
 
 export interface HospitalInfo {
@@ -63,11 +68,18 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
     if (!res.ok) throw new Error('병원 정보 조회 실패')
     const data: HospitalApiResponse = await res.json()
     return {
-      nameJa:     data.nameJa ?? data.nameKr,
-      nameKr:     data.nameKr,
-      clinicType: data.clinicType,
-      specialty:  data.specialty ?? null,
-      ...MOCK_DEFAULTS,
+      nameJa:      data.nameJa ?? data.nameKr,
+      nameKr:      data.nameKr,
+      clinicType:  data.clinicType,
+      specialty:   data.specialty ?? null,
+      phone:       data.phone       ?? MOCK_DEFAULTS.phone,
+      address:     data.address     ?? MOCK_DEFAULTS.address,
+      hours:       data.hours       ?? MOCK_DEFAULTS.hours,
+      lineId:      data.lineId      ?? MOCK_DEFAULTS.lineId,
+      instagramId: data.instagramId ?? MOCK_DEFAULTS.instagramId,
+      tagline:     MOCK_DEFAULTS.tagline,
+      taglineSub:  MOCK_DEFAULTS.taglineSub,
+      stats:       MOCK_DEFAULTS.stats,
     }
   } catch {
     // API 연결 실패 시 mock 기본값 사용

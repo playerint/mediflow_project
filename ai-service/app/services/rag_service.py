@@ -30,7 +30,7 @@ def embed_text(text_input: str) -> list[float]:
     """텍스트를 768차원 벡터로 변환한다."""
     client = _get_client()
     result = client.models.embed_content(
-        model="text-embedding-004",
+        model="gemini-embedding-001",
         contents=text_input,
         config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
     )
@@ -41,7 +41,7 @@ def embed_query(query: str) -> list[float]:
     """검색 쿼리를 벡터로 변환한다 (task_type이 등록과 다름)."""
     client = _get_client()
     result = client.models.embed_content(
-        model="text-embedding-004",
+        model="gemini-embedding-001",
         contents=query,
         config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
     )
@@ -104,33 +104,12 @@ def search_knowledge(
 
 def generate_answer(query: str, context_docs: list, hospital_id: int) -> str:
     """
-    검색된 문서들을 컨텍스트로 삼아 Gemini로 일본어 답변을 생성한다.
-    컨텍스트가 없으면 직원 연결 안내문을 반환한다.
+    검색된 지식 문서를 바탕으로 답변을 반환한다.
+    현재는 검색 결과를 직접 반환 (LLM 생성은 Claude API 키 승인 후 추가 예정).
     """
     if not context_docs:
         return "少々お待ちください。担当スタッフよりご連絡いたします。"
 
-    context = "\n---\n".join(
-        f"[{row.category}] {row.title or ''}\n{row.content}"
-        for row in context_docs
-    )
-
-    prompt = f"""あなたは韓国の美容・医療クリニックのLINE接客スタッフです。
-以下の病院情報をもとに、患者の質問に丁寧な日本語で答えてください。
-情報にない内容は「スタッフよりご案内します」と伝えてください。
-返答は3文以内で簡潔にしてください。
-
-【病院情報】
-{context}
-
-【患者の質問】
-{query}
-
-【返答】"""
-
-    client = _get_client()
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-    )
-    return response.text.strip()
+    top = context_docs[0]
+    title = f"【{top.title}】\n" if top.title else ""
+    return f"{title}{top.content}"

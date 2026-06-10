@@ -3,12 +3,14 @@ package io.mediflow.core.onboarding.controller;
 import io.mediflow.core.onboarding.dto.AnalyzeResultDto;
 import io.mediflow.core.onboarding.dto.ComplianceCheckResultDto;
 import io.mediflow.core.onboarding.dto.OnboardingResponse;
+import io.mediflow.core.onboarding.dto.StepDataResponse;
 import io.mediflow.core.onboarding.service.OnboardingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 온보딩 관리 API — platform-bo 에서 호출
@@ -82,5 +84,46 @@ public class OnboardingController {
     ) {
         String siteUrl = body.getOrDefault("siteUrl", "");
         return ResponseEntity.ok(onboardingService.publish(hospitalId, siteUrl));
+    }
+
+    /**
+     * PUT /api/v1/onboarding/hospitals/{hospitalId}/steps/{stepNumber}
+     * 특정 단계 데이터 저장 (없으면 생성, 있으면 덮어쓰기)
+     * Body: { "data": "{...}", "complete": true }
+     */
+    @PutMapping("/hospitals/{hospitalId}/steps/{stepNumber}")
+    public ResponseEntity<StepDataResponse> saveStepData(
+            @PathVariable Long hospitalId,
+            @PathVariable int stepNumber,
+            @RequestBody Map<String, Object> body
+    ) {
+        String data = (String) body.getOrDefault("data", "{}");
+        boolean complete = Boolean.TRUE.equals(body.get("complete"));
+        return ResponseEntity.ok(onboardingService.saveStepData(hospitalId, stepNumber, data, complete));
+    }
+
+    /**
+     * GET /api/v1/onboarding/hospitals/{hospitalId}/steps/{stepNumber}
+     * 특정 단계 데이터 조회
+     */
+    @GetMapping("/hospitals/{hospitalId}/steps/{stepNumber}")
+    public ResponseEntity<StepDataResponse> getStepData(
+            @PathVariable Long hospitalId,
+            @PathVariable int stepNumber
+    ) {
+        StepDataResponse result = onboardingService.getStepData(hospitalId, stepNumber);
+        if (result == null) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /api/v1/onboarding/hospitals/{hospitalId}/steps
+     * 해당 병원의 모든 단계 데이터 한 번에 조회
+     */
+    @GetMapping("/hospitals/{hospitalId}/steps")
+    public ResponseEntity<Map<Integer, StepDataResponse>> getAllStepData(
+            @PathVariable Long hospitalId
+    ) {
+        return ResponseEntity.ok(onboardingService.getAllStepData(hospitalId));
     }
 }

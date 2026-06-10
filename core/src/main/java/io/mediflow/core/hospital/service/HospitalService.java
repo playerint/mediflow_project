@@ -59,6 +59,11 @@ public class HospitalService {
                 .managerEmail(req.getManagerEmail())
                 .contractStart(req.getContractStart())
                 .contractExpire(req.getContractExpire())
+                .phone(req.getPhone())
+                .address(req.getAddress())
+                .hours(req.getHours())
+                .lineId(req.getLineId())
+                .instagramId(req.getInstagramId())
                 .build();
         Hospital saved = hospitalRepository.save(h);
         onboardingService.create(saved.getId());        // 온보딩 레코드 자동 생성

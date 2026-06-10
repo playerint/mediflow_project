@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     openai_api_key: str = ""
 
+    line_channel_id: str = ""
+    line_channel_secret: str = ""
+    line_channel_access_token: str = ""
+
     vector_db_url: str = ""
     port: int = 8000
     allowed_origins: str = "http://localhost:8080"

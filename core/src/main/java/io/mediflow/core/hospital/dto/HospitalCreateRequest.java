@@ -38,4 +38,10 @@ public class HospitalCreateRequest {
     private LocalDate contractStart;
 
     private LocalDate contractExpire;
+
+    private String phone;
+    private String address;
+    private String hours;
+    private String lineId;
+    private String instagramId;
 }

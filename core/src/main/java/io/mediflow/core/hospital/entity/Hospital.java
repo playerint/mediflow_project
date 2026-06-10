@@ -60,6 +60,26 @@ public class Hospital {
     @Column(length = 200)
     private String siteUrl;
 
+    /** 병원 전화번호 */
+    @Column(length = 50)
+    private String phone;
+
+    /** 병원 주소 */
+    @Column(length = 200)
+    private String address;
+
+    /** 영업시간 */
+    @Column(length = 100)
+    private String hours;
+
+    /** LINE 공식 계정 ID */
+    @Column(length = 100)
+    private String lineId;
+
+    /** 인스타그램 ID */
+    @Column(length = 100)
+    private String instagramId;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

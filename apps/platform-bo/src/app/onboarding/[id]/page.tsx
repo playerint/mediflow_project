@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import {
   getHospital, getOnboarding, nextOnboardingStep, publishOnboarding,
-  analyzeOnboarding, checkOnboardingCompliance,
+  analyzeOnboarding, checkOnboardingCompliance, getStepData, saveStepData,
   type HospitalDto, type OnboardingDto, type AnalyzeResultDto, type ComplianceResultDto,
 } from '@/lib/api'
 import { PLAN_BADGE } from '@/lib/mock-data'
@@ -79,6 +79,22 @@ export default function OnboardingDetailPage() {
       const [h, ob] = await Promise.all([getHospital(hospitalId), getOnboarding(hospitalId)])
       setHospital(h)
       setOnboarding(ob)
+
+      // DB에 저장된 각 단계 데이터 복원
+      const [step1, step3, step5] = await Promise.all([
+        getStepData(hospitalId, 1),
+        getStepData(hospitalId, 3),
+        getStepData(hospitalId, 5),
+      ])
+      if (step1?.data) {
+        try { setAnalyzeResult(JSON.parse(step1.data)) } catch { /* ignore */ }
+      }
+      if (step3?.data) {
+        try { const d = JSON.parse(step3.data); setSelectedTemplate(d.templateId ?? null) } catch { /* ignore */ }
+      }
+      if (step5?.data) {
+        try { const d = JSON.parse(step5.data); if (d.copy) setJapaneseCopy(d.copy) } catch { /* ignore */ }
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '데이터 조회 오류')
     } finally {
@@ -138,6 +154,16 @@ export default function OnboardingDetailPage() {
     if (!onboarding || advancing) return
     setAdvancing(true)
     try {
+      // 현재 단계 데이터 저장
+      const step = onboarding.currentStep
+      if (step === 3 && selectedTemplate) {
+        await saveStepData(hospitalId, 3, { templateId: selectedTemplate }, true)
+      } else if (step === 5 && japaneseCopy) {
+        await saveStepData(hospitalId, 5, { copy: japaneseCopy }, true)
+      } else if (step === 7) {
+        await saveStepData(hospitalId, 7, { lineConnected }, true)
+      }
+
       if (onboarding.currentStep < TOTAL_STEPS) {
         setOnboarding(await nextOnboardingStep(hospitalId))
       } else {

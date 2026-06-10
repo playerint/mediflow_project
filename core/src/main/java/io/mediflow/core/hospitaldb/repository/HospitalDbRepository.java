@@ -31,7 +31,7 @@ public class HospitalDbRepository {
         String s = schema(hospitalId);
         return jdbc.query(
                 "SELECT * FROM " + s + ".patients ORDER BY created_at DESC",
-                (rs, _) -> new PatientDto(
+                (rs, rowNum) -> new PatientDto(
                         rs.getLong("id"),
                         rs.getString("name_ja"),
                         rs.getString("name_ko"),
@@ -61,9 +61,9 @@ public class HospitalDbRepository {
             """.formatted(s, s, where);
 
         if (status != null && !status.isBlank()) {
-            return jdbc.query(sql, (rs, _) -> mapConsultation(rs), status);
+            return jdbc.query(sql, (rs, rowNum) -> mapConsultation(rs), status);
         }
-        return jdbc.query(sql, (rs, _) -> mapConsultation(rs));
+        return jdbc.query(sql, (rs, rowNum) -> mapConsultation(rs));
     }
 
     public int countByStatus(Long hospitalId, String status) {
@@ -91,7 +91,7 @@ public class HospitalDbRepository {
             JOIN   %s.patients p ON b.patient_id = p.id
             ORDER  BY b.scheduled_at ASC
             """.formatted(s, s),
-                (rs, _) -> new BookingDto(
+                (rs, rowNum) -> new BookingDto(
                         rs.getLong("id"),
                         rs.getLong("patient_id"),
                         rs.getString("patient_name_ja"),
