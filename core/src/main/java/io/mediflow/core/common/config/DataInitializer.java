@@ -2,6 +2,8 @@ package io.mediflow.core.common.config;
 
 import io.mediflow.core.platformbo.cs.entity.CsTicket;
 import io.mediflow.core.platformbo.cs.repository.CsTicketRepository;
+import io.mediflow.core.platformbo.marketing.entity.HospitalMarketingStats;
+import io.mediflow.core.platformbo.marketing.repository.HospitalMarketingStatsRepository;
 import io.mediflow.core.platformbo.notification.entity.PlatformNotification;
 import io.mediflow.core.platformbo.notification.repository.PlatformNotificationRepository;
 import io.mediflow.core.user.entity.User;
@@ -24,10 +26,11 @@ import java.util.List;
 @Slf4j
 public class DataInitializer implements ApplicationRunner {
 
-    private final UserRepository                 userRepository;
-    private final PasswordEncoder                passwordEncoder;
-    private final PlatformNotificationRepository notificationRepository;
-    private final CsTicketRepository             csTicketRepository;
+    private final UserRepository                    userRepository;
+    private final PasswordEncoder                   passwordEncoder;
+    private final PlatformNotificationRepository    notificationRepository;
+    private final CsTicketRepository                csTicketRepository;
+    private final HospitalMarketingStatsRepository  marketingStatsRepository;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -40,6 +43,7 @@ public class DataInitializer implements ApplicationRunner {
 
         seedNotifications();
         seedCsTickets();
+        seedMarketingStats();
     }
 
     private void createIfAbsent(String username, String rawPw, String role, Long hospitalId) {
@@ -167,5 +171,57 @@ public class DataInitializer implements ApplicationRunner {
         ));
 
         log.info("=== CS 티켓 초기 데이터 7건 삽입 완료 ===");
+    }
+
+    /** 병원 마케팅 지표 초기 데이터 5건 삽입 (데이터가 없을 때만) */
+    private void seedMarketingStats() {
+        if (marketingStatsRepository.count() > 0) {
+            return;
+        }
+
+        marketingStatsRepository.saveAll(List.of(
+                HospitalMarketingStats.builder()
+                        .hospitalId(1L)
+                        .hospitalName("올래성형외과")
+                        .aeoScore(58)
+                        .seoScore(82)
+                        .lineFollowers(1240)
+                        .aeoWeeklyChange(11)
+                        .build(),
+                HospitalMarketingStats.builder()
+                        .hospitalId(2L)
+                        .hospitalName("강남뷰티클리닉")
+                        .aeoScore(44)
+                        .seoScore(76)
+                        .lineFollowers(890)
+                        .aeoWeeklyChange(7)
+                        .build(),
+                HospitalMarketingStats.builder()
+                        .hospitalId(3L)
+                        .hospitalName("청담미래성형외과")
+                        .aeoScore(94)
+                        .seoScore(91)
+                        .lineFollowers(3100)
+                        .aeoWeeklyChange(23)
+                        .build(),
+                HospitalMarketingStats.builder()
+                        .hospitalId(5L)
+                        .hospitalName("신사라인성형외과")
+                        .aeoScore(31)
+                        .seoScore(68)
+                        .lineFollowers(560)
+                        .aeoWeeklyChange(4)
+                        .build(),
+                HospitalMarketingStats.builder()
+                        .hospitalId(8L)
+                        .hospitalName("논현더플러스")
+                        .aeoScore(22)
+                        .seoScore(60)
+                        .lineFollowers(420)
+                        .aeoWeeklyChange(-2)
+                        .build()
+        ));
+
+        log.info("=== 병원 마케팅 지표 초기 데이터 5건 삽입 완료 ===");
     }
 }

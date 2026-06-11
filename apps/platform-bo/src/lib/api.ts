@@ -306,6 +306,24 @@ export async function getTeamMembers(): Promise<PlatformUserDto[]> {
   return res.json()
 }
 
+// ── 플랫폼 마케팅 통계 ────────────────────────────────────────
+export interface HospitalMarketingStatsDto {
+  hospitalId: number
+  hospitalName: string
+  aeoScore: number
+  seoScore: number
+  lineFollowers: number
+  aeoWeeklyChange: number
+}
+
+export async function getPlatformMarketingStats(): Promise<HospitalMarketingStatsDto[]> {
+  const res = await fetch(`${BASE}/api/v1/platform/marketing/stats`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`마케팅 통계 조회 실패 (${res.status})`)
+  return res.json()
+}
+
 // ── CS 티켓 ──────────────────────────────────────────────────
 export interface CsTicketDto {
   id: number
