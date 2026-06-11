@@ -52,31 +52,28 @@ function buildSectionsFromStepData(stepData: Record<number, { data: string }>): 
       }
     }
 
-    // Step 2 — 의료진·시술 개수 표시 (편집 UI는 추후 구현)
+    // Step 2 — 의료진·시술 (첫 번째 의료진·시술의 이름·설명을 편집 가능 필드로 노출)
     const step2 = stepData[2]
     if (step2?.data) {
       const d2 = JSON.parse(step2.data)
-      const doctorCount    = Array.isArray(d2.doctors)    ? d2.doctors.length    : 0
-      const treatmentCount = Array.isArray(d2.treatments) ? d2.treatments.length : 0
-      sections.push({
-        id: 'doctors', name: '의료진 관리', emoji: '👨‍⚕️',
-        fields: [
-          {
-            key: 'info',
-            label: '의료진 현황',
-            value: doctorCount > 0
-              ? `현재 ${doctorCount}명 등록됨 (상세 편집은 온보딩 Step 2에서 가능합니다)`
-              : '등록된 의료진 없음 (온보딩 Step 2에서 등록하세요)',
-          },
-          {
-            key: 'treatmentInfo',
-            label: '시술 현황',
-            value: treatmentCount > 0
-              ? `${treatmentCount}개 시술 등록됨 (상세 편집은 온보딩 Step 2에서 가능합니다)`
-              : '등록된 시술 없음 (온보딩 Step 2에서 등록하세요)',
-          },
-        ],
-      })
+      const doctors:    Array<{ name?: string; title?: string; bio?: string }>    = Array.isArray(d2.doctors)    ? d2.doctors    : []
+      const treatments: Array<{ name?: string; description?: string; price?: string }> = Array.isArray(d2.treatments) ? d2.treatments : []
+      const doctorFields = doctors.slice(0, 3).flatMap((doc, i) => [
+        { key: `doc${i}name`,  label: `의료진 ${i + 1} 이름 (일본語)`, value: doc.name  ?? '' },
+        { key: `doc${i}title`, label: `직함·전공`,                      value: doc.title ?? '' },
+        { key: `doc${i}bio`,   label: `소개 본문`,                      value: doc.bio   ?? '', multiline: true },
+      ])
+      const treatmentFields = treatments.slice(0, 4).flatMap((t, i) => [
+        { key: `tr${i}name`,  label: `시술 ${i + 1} 이름 (일본語)`,  value: t.name        ?? '' },
+        { key: `tr${i}desc`,  label: `설명`,                          value: t.description ?? '', multiline: true },
+        { key: `tr${i}price`, label: `가격`,                          value: t.price       ?? '' },
+      ])
+      if (doctorFields.length > 0 || treatmentFields.length > 0) {
+        sections.push({
+          id: 'doctors', name: '의료진·시술', emoji: '👨‍⚕️',
+          fields: [...doctorFields, ...treatmentFields],
+        })
+      }
     }
 
     return sections.length > 0 ? sections : null
@@ -138,6 +135,38 @@ export default function SiteContentPage() {
           : ''
 
       await saveOnboardingStepData(5, { copy }, false)
+
+      // Step 2 — 의료진·시술 저장 (fields에서 재구성)
+      const doctorsSection = sections.find(s => s.id === 'doctors')
+      if (doctorsSection) {
+        const doctors = []
+        for (let i = 0; i < 3; i++) {
+          const name = fields[`doctors.doc${i}name`]
+          if (name) doctors.push({
+            name,
+            title: fields[`doctors.doc${i}title`] ?? '',
+            bio:   fields[`doctors.doc${i}bio`]   ?? '',
+          })
+        }
+        const treatments = []
+        for (let i = 0; i < 4; i++) {
+          const name = fields[`doctors.tr${i}name`]
+          if (name) treatments.push({
+            name,
+            description: fields[`doctors.tr${i}desc`]  ?? '',
+            price:       fields[`doctors.tr${i}price`] ?? '',
+          })
+        }
+        if (doctors.length > 0 || treatments.length > 0) {
+          const prevStep2 = await import('@/lib/api').then(m => m.getOnboardingStepData(2))
+          const prevData  = prevStep2?.data ? JSON.parse(prevStep2.data) : {}
+          await saveOnboardingStepData(2, {
+            ...prevData,
+            ...(doctors.length    > 0 && { doctors }),
+            ...(treatments.length > 0 && { treatments }),
+          }, false)
+        }
+      }
 
       // Step 8 (SEO 최종 설정 단계)에 FAQ 저장
       const faqSection = sections.find(s => s.id === 'faq')
