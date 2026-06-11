@@ -33,11 +33,12 @@ public class HospitalDbController {
 
     // ── 상담 문의 ─────────────────────────────────────────────────
 
-    /** GET /api/v1/hospital/consultations?status=new */
+    /** GET /api/v1/hospital/consultations?status=new&channel=LINE */
     @GetMapping("/consultations")
     public ResponseEntity<List<ConsultationDto>> getConsultations(
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(service.getConsultations(status));
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String channel) {
+        return ResponseEntity.ok(service.getConsultations(status, channel));
     }
 
     /** GET /api/v1/hospital/consultations/stats */

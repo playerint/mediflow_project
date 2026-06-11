@@ -168,7 +168,7 @@ export async function getBookings(): Promise<BookingDto[]> {
 
 // ── LINE 유입 상담 ──────────────────────────────────────────
 export async function getLineConsultations(): Promise<ConsultationDto[]> {
-  const res = await fetch(`${BASE}/api/v1/hospital/consultations?source=LINE`, {
+  const res = await fetch(`${BASE}/api/v1/hospital/consultations?channel=LINE`, {
     cache: 'no-store', headers: authHeaders(),
   })
   if (!res.ok) throw new Error(`LINE 상담 목록 조회 실패 (${res.status})`)

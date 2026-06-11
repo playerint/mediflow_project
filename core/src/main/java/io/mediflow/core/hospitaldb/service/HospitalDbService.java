@@ -31,8 +31,8 @@ public class HospitalDbService {
 
     // ── 상담 ─────────────────────────────────────────────────────
 
-    public List<ConsultationDto> getConsultations(String status) {
-        return repo.findConsultations(requireHospitalId(), status);
+    public List<ConsultationDto> getConsultations(String status, String channel) {
+        return repo.findConsultations(requireHospitalId(), status, channel);
     }
 
     public Map<String, Integer> getConsultationStats() {

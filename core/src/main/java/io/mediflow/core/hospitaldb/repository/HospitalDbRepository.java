@@ -49,21 +49,25 @@ public class HospitalDbRepository {
 
     // ── 상담 문의 ─────────────────────────────────────────────────
 
-    public List<ConsultationDto> findConsultations(Long hospitalId, String status) {
+    public List<ConsultationDto> findConsultations(Long hospitalId, String status, String channel) {
         String s = schema(hospitalId);
-        String where = (status != null && !status.isBlank()) ? " AND c.status = ?" : "";
+        String whereStatus  = (status  != null && !status.isBlank())  ? " AND c.status = ?"  : "";
+        String whereChannel = (channel != null && !channel.isBlank()) ? " AND c.channel = ?" : "";
         String sql = """
             SELECT c.*, p.name_ja AS patient_name_ja
             FROM   %s.consultations c
             JOIN   %s.patients      p ON c.patient_id = p.id
-            WHERE  1=1 %s
+            WHERE  1=1 %s %s
             ORDER  BY c.created_at DESC
-            """.formatted(s, s, where);
+            """.formatted(s, s, whereStatus, whereChannel);
 
-        if (status != null && !status.isBlank()) {
-            return jdbc.query(sql, (rs, rowNum) -> mapConsultation(rs), status);
-        }
-        return jdbc.query(sql, (rs, rowNum) -> mapConsultation(rs));
+        boolean hasStatus  = status  != null && !status.isBlank();
+        boolean hasChannel = channel != null && !channel.isBlank();
+
+        if (hasStatus && hasChannel) return jdbc.query(sql, (rs, r) -> mapConsultation(rs), status, channel);
+        if (hasStatus)               return jdbc.query(sql, (rs, r) -> mapConsultation(rs), status);
+        if (hasChannel)              return jdbc.query(sql, (rs, r) -> mapConsultation(rs), channel);
+        return jdbc.query(sql, (rs, r) -> mapConsultation(rs));
     }
 
     public int countByStatus(Long hospitalId, String status) {
