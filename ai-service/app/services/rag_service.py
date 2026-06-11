@@ -3,11 +3,12 @@ RAG 핵심 서비스.
 
 흐름:
   등록: 텍스트 → Gemini 임베딩 → PostgreSQL JSON 컬럼 저장
-  검색: 질문 → 임베딩 → NumPy 코사인 유사도 → 관련 문서 → Gemini 답변 생성
+  검색: 질문 → 임베딩 → NumPy 코사인 유사도 → 관련 문서 → Claude 답변 생성
 
 pgvector PostgreSQL 서버 확장 없이 동작한다.
 """
 from typing import Optional
+import logging
 import numpy as np
 from sqlalchemy.orm import Session
 from google import genai
@@ -15,6 +16,8 @@ from google.genai import types
 
 from app.config import settings
 from app.db.vector_db import HospitalKnowledge
+
+logger = logging.getLogger(__name__)
 
 _client: Optional[genai.Client] = None
 
@@ -104,12 +107,46 @@ def search_knowledge(
 
 def generate_answer(query: str, context_docs: list, hospital_id: int) -> str:
     """
-    검색된 지식 문서를 바탕으로 답변을 반환한다.
-    현재는 검색 결과를 직접 반환 (LLM 생성은 Claude API 키 승인 후 추가 예정).
+    검색된 지식 문서를 바탕으로 Claude Haiku로 자연스러운 일본어 답변을 생성한다.
+    ANTHROPIC_API_KEY 가 없으면 검색 결과 상위 1건을 그대로 반환한다.
     """
     if not context_docs:
         return "少々お待ちください。担当スタッフよりご連絡いたします。"
 
-    top = context_docs[0]
-    title = f"【{top.title}】\n" if top.title else ""
-    return f"{title}{top.content}"
+    if not settings.anthropic_api_key:
+        # 키 미설정 시 폴백: 검색 결과 직접 반환
+        top = context_docs[0]
+        title = f"【{top.title}】\n" if top.title else ""
+        return f"{title}{top.content}"
+
+    try:
+        import anthropic
+
+        context_text = "\n\n".join(
+            f"[{doc.title or doc.category}]\n{doc.content}"
+            for doc in context_docs
+        )
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            system=(
+                "あなたは韓国の医療クリニックの患者サポートアシスタントです。"
+                "提供された情報をもとに、患者の質問に対して自然で丁寧な日本語で回答してください。"
+                "回答は簡潔に、200文字以内でまとめてください。"
+                "情報に含まれていない内容については「担当スタッフよりご連絡いたします」と伝えてください。"
+            ),
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"【参考情報】\n{context_text}\n\n【患者の質問】\n{query}",
+                }
+            ],
+        )
+        return message.content[0].text
+    except Exception as e:
+        logger.warning("Claude API 답변 생성 실패, 폴백 사용: %s", e)
+        top = context_docs[0]
+        title = f"【{top.title}】\n" if top.title else ""
+        return f"{title}{top.content}"
