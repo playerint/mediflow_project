@@ -1,19 +1,45 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { getReportSummary, type ReportSummaryDto } from '@/lib/api'
 import { MONTHLY_KPI, CHANNEL_STATS } from '@/lib/mock-data'
 
-// 이번 달(6월)을 제외한 최근 5개월 합산 → 성과 요약
-const PAST = MONTHLY_KPI.slice(0, 5)
-const totalInquiries   = PAST.reduce((s, m) => s + m.inquiries, 0)
-const totalBookings    = PAST.reduce((s, m) => s + m.bookings, 0)
-const totalNewPatients = PAST.reduce((s, m) => s + m.newPatients, 0)
-const totalRevenue     = PAST.reduce((s, m) => s + m.revenue, 0)
-const convRate         = ((totalBookings / totalInquiries) * 100).toFixed(1)
-
-// 전월 대비 (5월 vs 4월)
-const last  = MONTHLY_KPI[4]
-const prev  = MONTHLY_KPI[3]
+// mock 기반 집계 (폴백용)
+const PAST             = MONTHLY_KPI.slice(0, 5)
+const mockTotalInq     = PAST.reduce((s, m) => s + m.inquiries, 0)
+const mockTotalBkg     = PAST.reduce((s, m) => s + m.bookings, 0)
+const mockTotalPat     = PAST.reduce((s, m) => s + m.newPatients, 0)
+const mockTotalRev     = PAST.reduce((s, m) => s + m.revenue, 0)
+const mockConvRate     = ((mockTotalBkg / mockTotalInq) * 100).toFixed(1)
+const last             = MONTHLY_KPI[4]
+const prev             = MONTHLY_KPI[3]
 const delta = (a: number, b: number) => (((a - b) / b) * 100).toFixed(0)
 
 export default function ReportsPage() {
+  const [summary,  setSummary]  = useState<ReportSummaryDto | null>(null)
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        setSummary(await getReportSummary())
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '리포트 조회 오류')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSummary()
+  }, [])
+
+  // 실API가 있으면 사용, 없으면 mock 집계값
+  const totalInq  = summary?.consultations ?? mockTotalInq
+  const totalBkg  = summary?.bookings      ?? mockTotalBkg
+  const totalPat  = summary?.newPatients   ?? mockTotalPat
+  const convRate  = summary ? summary.conversionRate.toFixed(1) : mockConvRate
+  const period    = summary?.period ?? '2026년 1–5월 누적'
+
   return (
     <>
       <div className="topbar">
@@ -21,29 +47,67 @@ export default function ReportsPage() {
           <span className="topbar-title">📊 리포트</span>
         </div>
         <div className="topbar-right">
-          <span style={{ fontSize: 12, color: 'var(--s400)' }}>2026년 1–5월 누적</span>
+          <span style={{ fontSize: 12, color: 'var(--s400)' }}>{period}</span>
           <button className="btn btn-sm">📥 내보내기</button>
         </div>
       </div>
 
       <div className="content">
+        {error && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 14, fontSize: 13, color: '#DC2626' }}>
+            ⚠ {error} — 임시 데이터를 표시합니다.
+          </div>
+        )}
+
         {/* 누적 KPI */}
         <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 600, color: 'var(--s400)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-          2026년 누적 성과 (1–5월)
+          {period}
         </div>
-        <div className="kpi-grid" style={{ marginBottom: 20 }}>
-          <KpiCard label="💬 총 문의" value={totalInquiries} unit="건"
-            delta={`전월 대비 ${Number(delta(last.inquiries, prev.inquiries)) > 0 ? '+' : ''}${delta(last.inquiries, prev.inquiries)}%`}
-            up={last.inquiries >= prev.inquiries} />
-          <KpiCard label="📅 총 예약" value={totalBookings} unit="건"
-            delta={`전환율 ${convRate}%`} up={true} />
-          <KpiCard label="👤 신규 환자" value={totalNewPatients} unit="명"
-            delta={`전월 대비 ${Number(delta(last.newPatients, prev.newPatients)) > 0 ? '+' : ''}${delta(last.newPatients, prev.newPatients)}%`}
-            up={last.newPatients >= prev.newPatients} />
-          <KpiCard label="💴 매출 (추정)" value={totalRevenue} unit="만원"
-            delta={`전월 대비 ${Number(delta(last.revenue, prev.revenue)) > 0 ? '+' : ''}${delta(last.revenue, prev.revenue)}%`}
-            up={last.revenue >= prev.revenue} />
-        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', color: 'var(--s400)', fontSize: 13, padding: '20px 0', marginBottom: 20 }}>
+            리포트 로딩 중...
+          </div>
+        ) : (
+          <div className="kpi-grid" style={{ marginBottom: 20 }}>
+            <KpiCard label="💬 총 문의" value={totalInq} unit="건"
+              delta={`전월 대비 ${Number(delta(last.inquiries, prev.inquiries)) > 0 ? '+' : ''}${delta(last.inquiries, prev.inquiries)}%`}
+              up={last.inquiries >= prev.inquiries} />
+            <KpiCard label="📅 총 예약" value={totalBkg} unit="건"
+              delta={`전환율 ${convRate}%`} up={true} />
+            <KpiCard label="👤 신규 환자" value={totalPat} unit="명"
+              delta={`전월 대비 ${Number(delta(last.newPatients, prev.newPatients)) > 0 ? '+' : ''}${delta(last.newPatients, prev.newPatients)}%`}
+              up={last.newPatients >= prev.newPatients} />
+            <KpiCard label="💴 매출 (추정)" value={mockTotalRev} unit="만원"
+              delta={`전월 대비 ${Number(delta(last.revenue, prev.revenue)) > 0 ? '+' : ''}${delta(last.revenue, prev.revenue)}%`}
+              up={last.revenue >= prev.revenue} />
+          </div>
+        )}
+
+        {/* 상위 시술 (실API 있을 때) */}
+        {summary && summary.topProcedures.length > 0 && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-head">
+              <span className="card-title">🏆 인기 시술</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {summary.topProcedures.map((p, i) => {
+                const max = summary.topProcedures[0].count
+                return (
+                  <div key={p.name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                      <span style={{ color: 'var(--s700)' }}>{i + 1}. {p.name}</span>
+                      <span style={{ fontWeight: 600 }}>{p.count}건</span>
+                    </div>
+                    <div className="prog-track">
+                      <div className="prog-fill" style={{ width: `${(p.count / max) * 100}%`, background: 'var(--navy)' }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid2" style={{ alignItems: 'start' }}>
           {/* 월별 추이 */}
@@ -55,9 +119,9 @@ export default function ReportsPage() {
             {/* 막대 차트 (CSS 기반) */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, padding: '0 4px', marginBottom: 8 }}>
               {MONTHLY_KPI.map((m) => {
-                const maxInq = Math.max(...MONTHLY_KPI.map(x => x.inquiries))
-                const inqH   = (m.inquiries / maxInq) * 120
-                const bkgH   = (m.bookings / maxInq) * 120
+                const maxInq    = Math.max(...MONTHLY_KPI.map(x => x.inquiries))
+                const inqH      = (m.inquiries / maxInq) * 120
+                const bkgH      = (m.bookings  / maxInq) * 120
                 const isCurrent = m.month === '2026-06'
                 return (
                   <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
@@ -160,7 +224,7 @@ export default function ReportsPage() {
                 채널별 문의 비중
               </div>
               {(() => {
-                const total = CHANNEL_STATS.reduce((s, c) => s + c.inquiries, 0)
+                const total  = CHANNEL_STATS.reduce((s, c) => s + c.inquiries, 0)
                 const colors = ['var(--navy)', 'var(--blue)', '#16A34A', 'var(--s300)']
                 return CHANNEL_STATS.map((c, i) => (
                   <div key={c.channel} style={{ marginBottom: 8 }}>

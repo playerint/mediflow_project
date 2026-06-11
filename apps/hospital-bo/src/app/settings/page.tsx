@@ -1,7 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { HOSPITAL_INFO, TEAM_MEMBERS, type TeamMember } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import {
+  getHospitalSettings, saveHospitalSettings,
+  getMyHospital,
+  type HospitalSettingsDto,
+} from '@/lib/api'
+import { TEAM_MEMBERS, type TeamMember } from '@/lib/mock-data'
 
 type Tab = 'account' | 'team' | 'notifications' | 'security'
 
@@ -18,32 +23,73 @@ const ROLE_BADGE: Record<TeamMember['role'], string> = {
   '검수자': 'badge bdg-green',
 }
 
-// 알림 설정 초기값
-const NOTIF_DEFAULTS = {
-  newInquiryEmail:   true,
-  newInquiryLine:    true,
-  bookingEmail:      true,
-  bookingLine:       false,
-  weeklyReportEmail: true,
-  monthlyReportEmail: true,
-  systemEmail:       true,
+const SETTINGS_DEFAULTS: HospitalSettingsDto = {
+  businessHours:     '09:00–18:00',
+  lunchBreak:        '12:00–13:00',
+  closedDays:        ['일요일'],
+  notificationEmail: '',
+  autoReplyEnabled:  true,
 }
 
 export default function SettingsPage() {
-  const [tab, setTab]     = useState<Tab>('account')
-  const [notif, setNotif] = useState(NOTIF_DEFAULTS)
+  const [tab,    setTab]    = useState<Tab>('account')
   const [members, setMembers] = useState(TEAM_MEMBERS)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole]   = useState<TeamMember['role']>('상담사')
-  const [saved, setSaved] = useState(false)
+  const [inviteRole,  setInviteRole]  = useState<TeamMember['role']>('상담사')
+  const [saved,  setSaved]  = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState<string | null>(null)
 
-  function toggleNotif(key: keyof typeof NOTIF_DEFAULTS) {
-    setNotif(prev => ({ ...prev, [key]: !prev[key] }))
-  }
+  // 계정 정보
+  const [hospitalName,   setHospitalName]   = useState('')
+  const [hospitalNameJa, setHospitalNameJa] = useState('')
+  const [siteUrl,        setSiteUrl]        = useState('')
+  const [plan,           setPlan]           = useState('')
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  // 설정 (실API)
+  const [settings, setSettings] = useState<HospitalSettingsDto>(SETTINGS_DEFAULTS)
+
+  // 알림 토글 (settings에서 추출)
+  const [notifEmail, setNotifEmail] = useState(true)
+  const [autoReply,  setAutoReply]  = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [hospital, apiSettings] = await Promise.all([
+          getMyHospital(),
+          getHospitalSettings(),
+        ])
+        setHospitalName(hospital.nameKr)
+        setHospitalNameJa(hospital.nameJa ?? '')
+        setSiteUrl(hospital.siteUrl ?? '')
+        setPlan(hospital.plan)
+        setSettings(apiSettings)
+        setNotifEmail(!!apiSettings.notificationEmail)
+        setAutoReply(apiSettings.autoReplyEnabled)
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : '설정 로딩 오류')
+      }
+    }
+    loadData()
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const updated = await saveHospitalSettings({
+        ...settings,
+        notificationEmail: notifEmail ? settings.notificationEmail : '',
+        autoReplyEnabled:  autoReply,
+      })
+      setSettings(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '저장 오류')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handleInvite() {
@@ -72,6 +118,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="content">
+        {error && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 14, fontSize: 13, color: '#DC2626' }}>
+            ⚠ {error} — 일부 항목은 임시 데이터를 표시합니다.
+          </div>
+        )}
+
         {/* 탭 바 */}
         <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid var(--s200)', paddingBottom: 0 }}>
           {TABS.map((t) => (
@@ -102,15 +154,26 @@ export default function SettingsPage() {
               <span className="card-title">🏥 병원 기본 정보</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Field label="병원명 (한국어)" defaultValue={HOSPITAL_INFO.name} />
-              <Field label="병원명 (일본어)" defaultValue={HOSPITAL_INFO.nameJa} />
-              <Field label="환자 사이트 URL" defaultValue={HOSPITAL_INFO.siteUrl} disabled />
-              <Field label="플랜" defaultValue={HOSPITAL_INFO.plan} disabled />
+              <LabeledField label="병원명 (한국어)" value={hospitalName} onChange={setHospitalName} />
+              <LabeledField label="병원명 (일본어)" value={hospitalNameJa} onChange={setHospitalNameJa} />
+              <LabeledField label="환자 사이트 URL" value={siteUrl} onChange={setSiteUrl} disabled />
+              <LabeledField label="플랜" value={plan} onChange={setPlan} disabled />
+
+              {/* 운영 시간 (실API 설정) */}
+              <LabeledField label="운영 시간" value={settings.businessHours}
+                onChange={v => setSettings(prev => ({ ...prev, businessHours: v }))} />
+              <LabeledField label="점심 시간" value={settings.lunchBreak}
+                onChange={v => setSettings(prev => ({ ...prev, lunchBreak: v }))} />
+              <LabeledField label="알림 이메일" value={settings.notificationEmail}
+                onChange={v => setSettings(prev => ({ ...prev, notificationEmail: v }))} />
+
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                 {saved && (
                   <span style={{ fontSize: 12, color: '#16A34A', alignSelf: 'center' }}>✓ 저장 완료</span>
                 )}
-                <button className="btn btn-primary" onClick={handleSave}>저장</button>
+                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? '저장 중...' : '저장'}
+                </button>
               </div>
             </div>
           </div>
@@ -200,19 +263,21 @@ export default function SettingsPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               <NotifSection label="문의·상담" />
-              <NotifRow label="신규 문의 알림 — 이메일"      on={notif.newInquiryEmail}   toggle={() => toggleNotif('newInquiryEmail')} />
-              <NotifRow label="신규 문의 알림 — LINE"        on={notif.newInquiryLine}    toggle={() => toggleNotif('newInquiryLine')} />
-
-              <NotifSection label="예약" />
-              <NotifRow label="예약 변경·취소 알림 — 이메일" on={notif.bookingEmail}       toggle={() => toggleNotif('bookingEmail')} />
-              <NotifRow label="예약 변경·취소 알림 — LINE"   on={notif.bookingLine}        toggle={() => toggleNotif('bookingLine')} />
+              <NotifRow label="신규 문의 알림 — 이메일"      on={notifEmail}        toggle={() => setNotifEmail(v => !v)} />
+              <NotifRow label="자동 응답 봇 활성화"           on={autoReply}         toggle={() => setAutoReply(v => !v)} />
 
               <NotifSection label="리포트" />
-              <NotifRow label="주간 리포트 — 이메일"         on={notif.weeklyReportEmail}  toggle={() => toggleNotif('weeklyReportEmail')} />
-              <NotifRow label="월간 리포트 — 이메일"         on={notif.monthlyReportEmail} toggle={() => toggleNotif('monthlyReportEmail')} />
+              <NotifRow label="주간 리포트 — 이메일"         on={true} toggle={() => {}} />
+              <NotifRow label="월간 리포트 — 이메일"         on={true} toggle={() => {}} />
 
               <NotifSection label="시스템" />
-              <NotifRow label="서비스 공지·업데이트 — 이메일" on={notif.systemEmail}       toggle={() => toggleNotif('systemEmail')} />
+              <NotifRow label="서비스 공지·업데이트 — 이메일" on={true} toggle={() => {}} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              {saved && <span style={{ fontSize: 12, color: '#16A34A', alignSelf: 'center', marginRight: 12 }}>✓ 저장 완료</span>}
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? '저장 중...' : '저장'}
+              </button>
             </div>
           </div>
         )}
@@ -225,11 +290,11 @@ export default function SettingsPage() {
                 <span className="card-title">🔑 비밀번호 변경</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <Field label="현재 비밀번호" type="password" />
-                <Field label="새 비밀번호" type="password" />
-                <Field label="새 비밀번호 확인" type="password" />
+                <StaticField label="현재 비밀번호" type="password" />
+                <StaticField label="새 비밀번호"   type="password" />
+                <StaticField label="새 비밀번호 확인" type="password" />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button className="btn btn-primary" onClick={handleSave}>변경</button>
+                  <button className="btn btn-primary">변경</button>
                 </div>
               </div>
             </div>
@@ -275,7 +340,28 @@ export default function SettingsPage() {
   )
 }
 
-function Field({ label, defaultValue, disabled, type }: {
+/** 상태가 있는 필드 (계정 탭용) */
+function LabeledField({ label, value, onChange, disabled, type }: {
+  label: string; value: string; onChange: (v: string) => void; disabled?: boolean; type?: string
+}) {
+  return (
+    <div>
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--s500)', display: 'block', marginBottom: 5 }}>
+        {label}
+      </label>
+      <input
+        type={type ?? 'text'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        style={{ opacity: disabled ? .55 : 1, cursor: disabled ? 'not-allowed' : 'text' }}
+      />
+    </div>
+  )
+}
+
+/** 상태가 없는 필드 (보안 탭 등) */
+function StaticField({ label, defaultValue, disabled, type }: {
   label: string; defaultValue?: string; disabled?: boolean; type?: string
 }) {
   return (
@@ -314,7 +400,6 @@ function NotifRow({ label, on, toggle }: { label: string; on: boolean; toggle: (
       padding: '10px 0', borderBottom: '1px solid var(--s100)',
     }}>
       <span style={{ fontSize: 13, color: 'var(--s700)' }}>{label}</span>
-      {/* 토글 스위치 */}
       <button
         onClick={toggle}
         style={{

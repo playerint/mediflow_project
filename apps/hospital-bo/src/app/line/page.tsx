@@ -1,6 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import {
+  getConsultationStats, getLineConsultations,
+  type ConsultationDto,
+} from '@/lib/api'
 import {
   LINE_BOT, LINE_CONVERSATIONS, AUTO_REPLY_RULES,
   type LineConversation, type LineConvStatus,
@@ -14,16 +18,76 @@ const STATUS_META: Record<LineConvStatus, { label: string; color: string; bg: st
   resolved:  { label: '완료',       color: '#6B7280', bg: '#F3F4F6' },
 }
 
+/** 실API 상담 통계를 LINE 봇 KPI 형식으로 변환 */
+function buildLineBotKpi(stats: Record<string, number>, lineConsultations: ConsultationDto[]) {
+  // stats 예: { total, new, pending, replied, LINE, ... }
+  const lineTotal   = stats['LINE']   ?? lineConsultations.length
+  const pending     = stats['pending'] ?? lineConsultations.filter(c => c.status === 'PENDING').length
+  const replied     = stats['replied'] ?? lineConsultations.filter(c => c.status === 'REPLIED').length
+  const total       = lineTotal || 1
+  const autoRate    = total > 0 ? Math.round((replied / total) * 100) : 0
+
+  return {
+    status:     LINE_BOT.status,   // LINE API 키 미설정 — mock 유지
+    todayCount: lineTotal,
+    pending,
+    autoRate,
+  }
+}
+
 export default function LinePage() {
   const [tab,      setTab]      = useState<Tab>('conversations')
   const [selected, setSelected] = useState<LineConversation | null>(null)
   const [reply,    setReply]    = useState('')
   const [filter,   setFilter]   = useState<LineConvStatus | 'all'>('all')
 
-  const escalated = LINE_CONVERSATIONS.filter(c => c.status === 'escalated')
+  // 실API 상태
+  const [botKpi,       setBotKpi]       = useState(LINE_BOT)
+  const [conversations, setConversations] = useState<LineConversation[]>(LINE_CONVERSATIONS)
+  const [statsLoading,  setStatsLoading]  = useState(true)
+  const [statsError,    setStatsError]    = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [stats, lineConsultations] = await Promise.all([
+          getConsultationStats(),
+          getLineConsultations(),
+        ])
+        setBotKpi(buildLineBotKpi(stats, lineConsultations))
+
+        // 실API 대화를 LineConversation 형태로 변환하여 mock과 병합
+        // (실API에 thread 정보가 없으므로 기본 thread 제공)
+        if (lineConsultations.length > 0) {
+          const fromApi: LineConversation[] = lineConsultations.map(c => ({
+            id:       c.id + 10000,  // mock과 충돌 방지
+            name:     c.patientNameJa,
+            nameKana: '',
+            status:   (c.status === 'PENDING' ? 'escalated'
+                      : c.status === 'REPLIED' ? 'resolved'
+                      : 'bot') as LineConvStatus,
+            lastMsg:  c.message ?? '',
+            lastTime: c.createdAt ? new Date(c.createdAt).toLocaleDateString('ko-KR') : '',
+            unread:   c.status === 'NEW' ? 1 : 0,
+            thread:   [
+              { role: 'patient' as const, text: c.message ?? '', time: c.createdAt ?? '' },
+            ],
+          }))
+          setConversations([...fromApi, ...LINE_CONVERSATIONS])
+        }
+      } catch (e: unknown) {
+        setStatsError(e instanceof Error ? e.message : '통계 조회 오류')
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+    loadStats()
+  }, [])
+
+  const escalated = conversations.filter(c => c.status === 'escalated')
   const filtered  = filter === 'all'
-    ? LINE_CONVERSATIONS
-    : LINE_CONVERSATIONS.filter(c => c.status === filter)
+    ? conversations
+    : conversations.filter(c => c.status === filter)
 
   return (
     <>
@@ -60,49 +124,60 @@ export default function LinePage() {
 
       <div className="content fade">
 
+        {/* 에러 배너 */}
+        {statsError && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--rl)', padding: '10px 16px', marginBottom: 14, fontSize: 13, color: '#DC2626' }}>
+            ⚠ 통계 조회 실패: {statsError} — 임시 데이터를 표시합니다.
+          </div>
+        )}
+
         {/* 봇 상태 배너 */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 16,
-          background: LINE_BOT.status === 'on' ? '#F0FDF4' : 'var(--s100)',
-          border: `1px solid ${LINE_BOT.status === 'on' ? '#86EFAC' : 'var(--s200)'}`,
+          background: botKpi.status === 'on' ? '#F0FDF4' : 'var(--s100)',
+          border: `1px solid ${botKpi.status === 'on' ? '#86EFAC' : 'var(--s200)'}`,
           borderRadius: 'var(--rl)', padding: '14px 20px', marginBottom: 18,
         }}>
           {/* 상태 표시 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
               width: 10, height: 10, borderRadius: '50%',
-              background: LINE_BOT.status === 'on' ? '#16A34A' : 'var(--s400)',
-              boxShadow: LINE_BOT.status === 'on' ? '0 0 0 3px #BBF7D0' : 'none',
+              background: botKpi.status === 'on' ? '#16A34A' : 'var(--s400)',
+              boxShadow: botKpi.status === 'on' ? '0 0 0 3px #BBF7D0' : 'none',
             }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: LINE_BOT.status === 'on' ? '#15803D' : 'var(--s500)' }}>
-              자동상담 봇 {LINE_BOT.status === 'on' ? '가동 중' : '정지됨'}
+            <span style={{ fontSize: 14, fontWeight: 700, color: botKpi.status === 'on' ? '#15803D' : 'var(--s500)' }}>
+              자동상담 봇 {botKpi.status === 'on' ? '가동 중' : '정지됨'}
             </span>
           </div>
 
           {/* KPI 3개 */}
           <div style={{ display: 'flex', gap: 24, marginLeft: 16 }}>
-            {[
-              { label: '오늘 대화', value: LINE_BOT.todayCount, unit: '건' },
-              { label: '자동 처리율', value: LINE_BOT.autoRate, unit: '%' },
-              { label: '수동 처리 필요', value: LINE_BOT.pending, unit: '건', red: LINE_BOT.pending > 0 },
-            ].map(k => (
-              <div key={k.label} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: k.red ? 'var(--red)' : 'var(--navy)' }}>
-                  {k.value}
-                </span>
-                <span style={{ fontSize: 12, color: 'var(--s500)' }}>{k.unit} {k.label}</span>
-              </div>
-            ))}
+            {statsLoading ? (
+              <span style={{ fontSize: 13, color: 'var(--s400)' }}>통계 로딩 중...</span>
+            ) : (
+              [
+                { label: '오늘 대화', value: botKpi.todayCount, unit: '건' },
+                { label: '자동 처리율', value: botKpi.autoRate, unit: '%' },
+                { label: '수동 처리 필요', value: botKpi.pending, unit: '건', red: botKpi.pending > 0 },
+              ].map(k => (
+                <div key={k.label} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: k.red ? 'var(--red)' : 'var(--navy)' }}>
+                    {k.value}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--s500)' }}>{k.unit} {k.label}</span>
+                </div>
+              ))
+            )}
           </div>
 
           {/* 토글 버튼 */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button className="btn btn-sm">⚙ 봇 설정</button>
             <button
-              className={`btn btn-sm${LINE_BOT.status === 'on' ? '' : ' btn-primary'}`}
-              style={LINE_BOT.status === 'on' ? { borderColor: 'var(--red)', color: 'var(--red)' } : {}}
+              className={`btn btn-sm${botKpi.status === 'on' ? '' : ' btn-primary'}`}
+              style={botKpi.status === 'on' ? { borderColor: 'var(--red)', color: 'var(--red)' } : {}}
             >
-              {LINE_BOT.status === 'on' ? '⏸ 일시 정지' : '▶ 재가동'}
+              {botKpi.status === 'on' ? '⏸ 일시 정지' : '▶ 재가동'}
             </button>
           </div>
         </div>
@@ -157,7 +232,9 @@ export default function LinePage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--s900)' }}>{conv.name}</span>
                             <span style={{ fontSize: 10, color: 'var(--s400)' }}>{conv.lastTime}</span>
                           </div>
-                          <div style={{ fontSize: 10, color: 'var(--s400)', marginBottom: 3 }}>{conv.nameKana}</div>
+                          {conv.nameKana && (
+                            <div style={{ fontSize: 10, color: 'var(--s400)', marginBottom: 3 }}>{conv.nameKana}</div>
+                          )}
                         </div>
                       </div>
 
@@ -198,7 +275,9 @@ export default function LinePage() {
                         {STATUS_META[selected.status].label}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--s400)', marginTop: 2 }}>{selected.nameKana}</div>
+                    {selected.nameKana && (
+                      <div style={{ fontSize: 11, color: 'var(--s400)', marginTop: 2 }}>{selected.nameKana}</div>
+                    )}
                   </div>
                   <button className="btn btn-sm">👤 CRM에서 보기</button>
                   {selected.status === 'escalated' && (

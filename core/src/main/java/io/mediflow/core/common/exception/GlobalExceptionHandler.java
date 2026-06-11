@@ -34,6 +34,13 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "JSON 파싱 오류", "message", e.getMessage()));
     }
 
+    /** hospital_id 없는 요청 (TenantContext 미설정) */
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<Map<String, String>> handleSecurity(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", e.getMessage()));
+    }
+
     /** 입력 유효성 검사 실패 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
