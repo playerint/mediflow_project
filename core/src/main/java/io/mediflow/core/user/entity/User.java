@@ -36,7 +36,22 @@ public class User {
     @Column
     private Long hospitalId;
 
+    @Column(length = 50)
+    private String displayName;   // 이름 (예: 김운영)
+
+    @Column(length = 20)
+    private String phone;         // 연락처
+
+    @Column(length = 100)
+    private String company;       // 소속 회사
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public void updateProfile(String displayName, String phone, String company) {
+        this.displayName = displayName;
+        this.phone = phone;
+        this.company = company;
+    }
 }

@@ -266,3 +266,71 @@ export async function markAllNotificationsRead(): Promise<void> {
   })
   if (!res.ok) throw new Error(`전체 읽음 처리 실패 (${res.status})`)
 }
+
+// ── 플랫폼 사용자 ────────────────────────────────────────────
+export interface PlatformUserDto {
+  id: number
+  username: string
+  displayName: string | null
+  phone: string | null
+  company: string | null
+  role: string
+  createdAt: string
+}
+
+export async function getMyProfile(): Promise<PlatformUserDto> {
+  const res = await fetch(`${BASE}/api/v1/platform/users/me`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`프로필 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function updateMyProfile(data: {
+  displayName?: string; phone?: string; company?: string
+}): Promise<PlatformUserDto> {
+  const res = await fetch(`${BASE}/api/v1/platform/users/me`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`프로필 수정 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function getTeamMembers(): Promise<PlatformUserDto[]> {
+  const res = await fetch(`${BASE}/api/v1/platform/users`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`팀 멤버 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+// ── CS 티켓 ──────────────────────────────────────────────────
+export interface CsTicketDto {
+  id: number
+  hospitalName: string | null
+  type: string
+  title: string
+  status: string
+  priority: string
+  createdAt: string
+}
+
+export async function getCsTickets(status?: string): Promise<CsTicketDto[]> {
+  const url = status
+    ? `${BASE}/api/v1/platform/cs/tickets?status=${encodeURIComponent(status)}`
+    : `${BASE}/api/v1/platform/cs/tickets`
+  const res = await fetch(url, { cache: 'no-store', headers: authHeaders() })
+  if (!res.ok) throw new Error(`CS 티켓 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function updateCsTicketStatus(id: number, status: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/platform/cs/tickets/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error(`티켓 상태 변경 실패 (${res.status})`)
+}

@@ -1,5 +1,7 @@
 package io.mediflow.core.common.config;
 
+import io.mediflow.core.platformbo.cs.entity.CsTicket;
+import io.mediflow.core.platformbo.cs.repository.CsTicketRepository;
 import io.mediflow.core.platformbo.notification.entity.PlatformNotification;
 import io.mediflow.core.platformbo.notification.repository.PlatformNotificationRepository;
 import io.mediflow.core.user.entity.User;
@@ -25,6 +27,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository                 userRepository;
     private final PasswordEncoder                passwordEncoder;
     private final PlatformNotificationRepository notificationRepository;
+    private final CsTicketRepository             csTicketRepository;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -36,6 +39,7 @@ public class DataInitializer implements ApplicationRunner {
         log.info("=== 개발용 기본 계정 초기화 완료 ===");
 
         seedNotifications();
+        seedCsTickets();
     }
 
     private void createIfAbsent(String username, String rawPw, String role, Long hospitalId) {
@@ -102,5 +106,66 @@ public class DataInitializer implements ApplicationRunner {
         ));
 
         log.info("=== 본사 알림 초기 데이터 7건 삽입 완료 ===");
+    }
+
+    /** CS 티켓 초기 데이터 7건 삽입 (데이터가 없을 때만) */
+    private void seedCsTickets() {
+        if (csTicketRepository.count() > 0) {
+            return;
+        }
+
+        csTicketRepository.saveAll(List.of(
+                CsTicket.builder()
+                        .hospitalName("올래성형외과")
+                        .type("불만")
+                        .title("일본어 문의 48시간 무응답")
+                        .status("open")
+                        .priority("high")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("청담미래성형외과")
+                        .type("컴플라이언스")
+                        .title("광고 표현 위반 2건 감지")
+                        .status("progress")
+                        .priority("high")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("압구정원성형외과")
+                        .type("문의")
+                        .title("사이트 업데이트 방법 문의")
+                        .status("progress")
+                        .priority("mid")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("강남뷰티클리닉")
+                        .type("오류")
+                        .title("LINE 봇 연결 오류 발생")
+                        .status("open")
+                        .priority("high")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("반포미성형외과")
+                        .type("문의")
+                        .title("예약 시스템 추가 기능 요청")
+                        .status("closed")
+                        .priority("low")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("신사라인성형외과")
+                        .type("불만")
+                        .title("대시보드 수치 오차 이의")
+                        .status("closed")
+                        .priority("mid")
+                        .build(),
+                CsTicket.builder()
+                        .hospitalName("논현더플러스")
+                        .type("문의")
+                        .title("SEO 점수 개선 컨설팅 요청")
+                        .status("open")
+                        .priority("low")
+                        .build()
+        ));
+
+        log.info("=== CS 티켓 초기 데이터 7건 삽입 완료 ===");
     }
 }

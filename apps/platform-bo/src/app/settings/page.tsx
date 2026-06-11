@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PageHeader from '@/components/PageHeader'
+import { getMyProfile, updateMyProfile, getTeamMembers, PlatformUserDto } from '@/lib/api'
 
 type TabKey = 'account' | 'team' | 'notifications' | 'security'
 
@@ -12,14 +13,85 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'security',      label: '보안' },
 ]
 
-const TEAM_MEMBERS = [
-  { name: '김운영', email: 'admin@mediflow.io',  role: '슈퍼 어드민', lastLogin: '방금 전' },
-  { name: '이수진', email: 'ops@mediflow.io',    role: '운영팀',      lastLogin: '2시간 전' },
-  { name: '박재무', email: 'finance@mediflow.io', role: '재무팀',     lastLogin: '1일 전' },
-]
+const ROLE_LABEL: Record<string, string> = {
+  SUPER:   '슈퍼 어드민',
+  OPS:     '운영팀',
+  FINANCE: '재무팀',
+}
+
+function roleLabel(role: string): string {
+  return ROLE_LABEL[role] ?? role
+}
+
+function displayName(user: PlatformUserDto): string {
+  if (user.displayName) return user.displayName
+  return user.username.split('@')[0]
+}
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<TabKey>('account')
+
+  // 계정 정보 탭 상태
+  const [profile, setProfile]         = useState<PlatformUserDto | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError]     = useState<string | null>(null)
+  const [saving, setSaving]           = useState(false)
+  const [saveMsg, setSaveMsg]         = useState<string | null>(null)
+
+  const [formName,    setFormName]    = useState('')
+  const [formPhone,   setFormPhone]   = useState('')
+  const [formCompany, setFormCompany] = useState('')
+
+  // 팀 멤버 탭 상태
+  const [members, setMembers]           = useState<PlatformUserDto[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [membersError, setMembersError]     = useState<string | null>(null)
+
+  // 계정 정보 로드
+  useEffect(() => {
+    if (tab !== 'account') return
+    setProfileLoading(true)
+    setProfileError(null)
+    getMyProfile()
+      .then(data => {
+        setProfile(data)
+        setFormName(displayName(data))
+        setFormPhone(data.phone ?? '')
+        setFormCompany(data.company ?? '')
+      })
+      .catch(e => setProfileError(e.message))
+      .finally(() => setProfileLoading(false))
+  }, [tab])
+
+  // 팀 멤버 로드
+  useEffect(() => {
+    if (tab !== 'team') return
+    setMembersLoading(true)
+    setMembersError(null)
+    getTeamMembers()
+      .then(data => setMembers(data))
+      .catch(e => setMembersError(e.message))
+      .finally(() => setMembersLoading(false))
+  }, [tab])
+
+  async function handleSaveProfile() {
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const updated = await updateMyProfile({
+        displayName: formName,
+        phone:       formPhone,
+        company:     formCompany,
+      })
+      setProfile(updated)
+      setSaveMsg('저장되었습니다.')
+    } catch (e: unknown) {
+      setSaveMsg(e instanceof Error ? e.message : '저장 실패')
+    } finally {
+      setSaving(false)
+      setTimeout(() => setSaveMsg(null), 3000)
+    }
+  }
 
   return (
     <>
@@ -39,19 +111,66 @@ export default function SettingsPage() {
           <div className="card">
             <div className="card-head" style={{ marginBottom: 20 }}>
               <div className="card-title">계정 정보</div>
-              <button className="btn btn-primary btn-sm">저장</button>
-            </div>
-            {[
-              { label: '이름',       value: '김운영' },
-              { label: '이메일',     value: 'admin@mediflow.io' },
-              { label: '연락처',     value: '010-0000-0000' },
-              { label: '소속 회사',  value: 'MEDIFLOW Inc.' },
-            ].map(f => (
-              <div key={f.label} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'center', marginBottom: 14 }}>
-                <label style={{ fontSize: 13, color: 'var(--s500)', fontWeight: 500 }}>{f.label}</label>
-                <input type="text" defaultValue={f.value} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {saveMsg && (
+                  <span style={{ fontSize: 12, color: saveMsg.includes('실패') ? 'var(--red)' : 'var(--teal)' }}>
+                    {saveMsg}
+                  </span>
+                )}
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSaveProfile}
+                  disabled={saving || profileLoading}
+                >
+                  {saving ? '저장 중…' : '저장'}
+                </button>
               </div>
-            ))}
+            </div>
+
+            {profileLoading && (
+              <div style={{ padding: '20px 0', color: 'var(--s400)', fontSize: 13 }}>불러오는 중…</div>
+            )}
+            {profileError && (
+              <div style={{ padding: '20px 0', color: 'var(--red)', fontSize: 13 }}>{profileError}</div>
+            )}
+
+            {!profileLoading && !profileError && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                  <label style={{ fontSize: 13, color: 'var(--s500)', fontWeight: 500 }}>이름</label>
+                  <input
+                    type="text"
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                  <label style={{ fontSize: 13, color: 'var(--s500)', fontWeight: 500 }}>이메일</label>
+                  <input
+                    type="text"
+                    value={profile?.username ?? ''}
+                    readOnly
+                    style={{ background: 'var(--s50)', color: 'var(--s400)', cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                  <label style={{ fontSize: 13, color: 'var(--s500)', fontWeight: 500 }}>연락처</label>
+                  <input
+                    type="text"
+                    value={formPhone}
+                    onChange={e => setFormPhone(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                  <label style={{ fontSize: 13, color: 'var(--s500)', fontWeight: 500 }}>소속 회사</label>
+                  <input
+                    type="text"
+                    value={formCompany}
+                    onChange={e => setFormCompany(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -59,30 +178,45 @@ export default function SettingsPage() {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--s100)' }}>
               <div className="card-title">팀 멤버</div>
-              <button className="btn btn-primary btn-sm">+ 멤버 초대</button>
+              <button className="btn btn-primary btn-sm" disabled title="준비 중">+ 멤버 초대</button>
             </div>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>이름</th>
-                  <th>이메일</th>
-                  <th>역할</th>
-                  <th>최근 로그인</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {TEAM_MEMBERS.map(m => (
-                  <tr key={m.email}>
-                    <td style={{ fontWeight: 600 }}>{m.name}</td>
-                    <td style={{ fontSize: 12, color: 'var(--s500)' }}>{m.email}</td>
-                    <td><span className="badge bdg-navy">{m.role}</span></td>
-                    <td style={{ fontSize: 12, color: 'var(--s400)' }}>{m.lastLogin}</td>
-                    <td><button className="btn btn-sm">편집</button></td>
+
+            {membersLoading && (
+              <div style={{ padding: '24px 20px', color: 'var(--s400)', fontSize: 13 }}>불러오는 중…</div>
+            )}
+            {membersError && (
+              <div style={{ padding: '24px 20px', color: 'var(--red)', fontSize: 13 }}>{membersError}</div>
+            )}
+
+            {!membersLoading && !membersError && (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>이메일</th>
+                    <th>역할</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {members.map(m => (
+                    <tr key={m.id}>
+                      <td style={{ fontWeight: 600 }}>{displayName(m)}</td>
+                      <td style={{ fontSize: 12, color: 'var(--s500)' }}>{m.username}</td>
+                      <td><span className="badge bdg-navy">{roleLabel(m.role)}</span></td>
+                      <td><button className="btn btn-sm" disabled title="준비 중">편집</button></td>
+                    </tr>
+                  ))}
+                  {members.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--s400)', fontSize: 13, padding: '24px 0' }}>
+                        팀 멤버가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
