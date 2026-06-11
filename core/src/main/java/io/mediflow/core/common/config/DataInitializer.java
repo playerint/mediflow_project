@@ -229,16 +229,9 @@ public class DataInitializer implements ApplicationRunner {
         log.info("=== 병원 마케팅 지표 초기 데이터 5건 삽입 완료 ===");
     }
 
-    /** hospital_id=1 의 Step 2 (의료진·시술) 초기 데이터 삽입 (없을 때만) */
+    /** hospital_id=1 의 Step 2 (의료진·시술·후기) 초기 데이터 삽입 또는 갱신 */
     private void seedStep2Content() {
-        if (stepDataRepository.findByHospitalIdAndStepNumber(1L, 2).isPresent()) {
-            return;
-        }
-
-        OnboardingStepData entity = OnboardingStepData.builder()
-                .hospitalId(1L)
-                .stepNumber(2)
-                .data("""
+        String step2Json = """
                 {
                   "doctors": [
                     {"nameJa": "キム・ジフン 院長", "specialty": "目元・埋没法", "experience": "美容外科専門医 15年", "gradient": "from-rose-100 to-pink-200"},
@@ -255,12 +248,32 @@ public class DataInitializer implements ApplicationRunner {
                     {"nameJa": "ヒアルロン酸注入", "duration": "20分", "category": "スキン", "emoji": "💧"},
                     {"nameJa": "フェイスリフト", "duration": "180分", "category": "輪郭", "emoji": "✨"},
                     {"nameJa": "レーザートーニング", "duration": "30分", "category": "スキン", "emoji": "💫"}
+                  ],
+                  "reviews": [
+                    {"name": "さくら（28歳・東京）", "treatment": "二重整形（埋没法）", "text": "日本語対応のスタッフがいて安心でした。術後のケアも丁寧で、自然な仕上がりに大満足です！", "rating": 5},
+                    {"name": "はな（25歳・大阪）", "treatment": "鼻整形（プロテーゼ）", "text": "思っていた以上に自然な仕上がりでとても満足しています。先生の説明も丁寧でした。", "rating": 5},
+                    {"name": "みのり（32歳・名古屋）", "treatment": "エラボトックス", "text": "施術後すぐに効果を実感。スタッフも日本語が話せて不安なく相談できました。", "rating": 4},
+                    {"name": "ゆい（23歳・福岡）", "treatment": "目頭切開＋埋没法", "text": "韓国での手術を迷っていましたが、丁寧なカウンセリングで決心できました。大満足！", "rating": 5},
+                    {"name": "えりか（35歳・札幌）", "treatment": "ヒアルロン酸注入", "text": "初めての美容施術でしたが、先生が優しく説明してくださいました。また来たいです。", "rating": 5}
                   ]
                 }
-                """)
-                .build();
+                """;
 
-        stepDataRepository.save(entity);
-        log.info("=== hospital_id=1 Step 2 의료진·시술 초기 데이터 삽입 완료 ===");
+        stepDataRepository.findByHospitalIdAndStepNumber(1L, 2).ifPresentOrElse(
+                existing -> {
+                    existing.updateData(step2Json, true);
+                    stepDataRepository.save(existing);
+                    log.info("=== hospital_id=1 Step 2 reviews 추가로 데이터 갱신 완료 ===");
+                },
+                () -> {
+                    OnboardingStepData entity = OnboardingStepData.builder()
+                            .hospitalId(1L)
+                            .stepNumber(2)
+                            .data(step2Json)
+                            .build();
+                    stepDataRepository.save(entity);
+                    log.info("=== hospital_id=1 Step 2 의료진·시술·후기 초기 데이터 삽입 완료 ===");
+                }
+        );
     }
 }

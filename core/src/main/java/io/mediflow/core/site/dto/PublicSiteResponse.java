@@ -29,9 +29,10 @@ public class PublicSiteResponse {
     // Step 1 FAQ
     private List<Map<String,Object>> faqs;
 
-    // Step 2 의료진·시술
+    // Step 2 의료진·시술·후기
     private List<Map<String,Object>> doctors;
     private List<Map<String,Object>> treatments;
+    private List<Map<String,Object>> reviews;
 
     // Step 5 일본어 카피
     private String japaneseCopy;

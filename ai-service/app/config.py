@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     line_channel_id: str = ""
     line_channel_secret: str = ""
     line_channel_access_token: str = ""
+    # "채널ID1:병원ID1,채널ID2:병원ID2" 형식으로 LINE 채널 → hospital_id 매핑
+    line_hospital_mapping: str = ""
 
     vector_db_url: str = ""
     port: int = 8000

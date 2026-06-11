@@ -22,6 +22,42 @@ _MIN_DOCS_FOR_AUTO_REPLY = 1
 _handler: WebhookHandler | None = None
 _messaging_api: MessagingApi | None = None
 
+
+def _build_channel_mapping() -> dict[str, int]:
+    """환경변수 LINE_HOSPITAL_MAPPING을 파싱해 {채널ID: hospital_id} dict를 반환한다.
+
+    형식 예시: LINE_HOSPITAL_MAPPING=2010356259:1,9999999:2
+    파싱 실패한 항목은 조용히 건너뛴다.
+    """
+    raw = settings.line_hospital_mapping.strip()
+    mapping: dict[str, int] = {}
+    if not raw:
+        return mapping
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if ":" not in pair:
+            continue
+        channel_id, _, hospital_id_str = pair.partition(":")
+        channel_id = channel_id.strip()
+        hospital_id_str = hospital_id_str.strip()
+        if channel_id and hospital_id_str.isdigit():
+            mapping[channel_id] = int(hospital_id_str)
+    return mapping
+
+
+# 서버 시작 시 한 번만 파싱 (런타임 중 .env 변경은 반영 안 됨 — 재시작 필요)
+_CHANNEL_HOSPITAL_MAP: dict[str, int] = _build_channel_mapping()
+
+_FALLBACK_HOSPITAL_ID = 1
+
+
+def _resolve_hospital_id(destination: str) -> int:
+    """웹훅 payload의 destination(채널 식별자)으로 hospital_id를 반환한다.
+
+    매핑에 없으면 _FALLBACK_HOSPITAL_ID(=1)를 반환한다.
+    """
+    return _CHANNEL_HOSPITAL_MAP.get(destination, _FALLBACK_HOSPITAL_ID)
+
 def _get_handler() -> WebhookHandler:
     global _handler
     if _handler is None:
@@ -56,7 +92,10 @@ async def line_webhook(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     import json
-    events = json.loads(body_text).get("events", [])
+    payload = json.loads(body_text)
+    # destination: 이 웹훅을 받은 LINE 채널의 식별자
+    destination: str = payload.get("destination", "")
+    events = payload.get("events", [])
 
     for event in events:
         if event.get("type") != "message":
@@ -67,8 +106,9 @@ async def line_webhook(request: Request, db: Session = Depends(get_db)):
         reply_token = event["replyToken"]
         user_message = event["message"]["text"]
 
-        # 개발 중: hospital_id=1 고정 (추후 LINE 채널 ID로 병원 매핑)
-        hospital_id = 1
+        # LINE 채널 ID(destination) → hospital_id 매핑 (환경변수 LINE_HOSPITAL_MAPPING)
+        # 매핑에 없으면 fallback=1
+        hospital_id = _resolve_hospital_id(destination)
 
         docs = rag_service.search_knowledge(
             db=db,

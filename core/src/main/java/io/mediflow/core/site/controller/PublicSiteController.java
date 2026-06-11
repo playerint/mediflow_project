@@ -42,6 +42,7 @@ public class PublicSiteController {
         List<Map<String,Object>> faqs               = List.of();
         List<Map<String,Object>> doctors            = List.of();
         List<Map<String,Object>> treatments         = List.of();
+        List<Map<String,Object>> reviews            = List.of();
         String                  japaneseCopy        = "";
 
         // Step 1 — 분석 결과 (specialties, suggestedKeywordsJa, faqs)
@@ -96,6 +97,13 @@ public class PublicSiteController {
                             .map(m -> (Map<String,Object>) m)
                             .toList();
                 }
+                Object rv = d.get("reviews");
+                if (rv instanceof List<?> list) {
+                    reviews = list.stream()
+                            .filter(m -> m instanceof Map)
+                            .map(m -> (Map<String,Object>) m)
+                            .toList();
+                }
             } catch (Exception e) {
                 log.warn("Step 2 데이터 파싱 실패 hospitalId={}", hospitalId, e);
             }
@@ -131,6 +139,7 @@ public class PublicSiteController {
                 .faqs(faqs)
                 .doctors(doctors)
                 .treatments(treatments)
+                .reviews(reviews)
                 .japaneseCopy(japaneseCopy)
                 .build();
 
