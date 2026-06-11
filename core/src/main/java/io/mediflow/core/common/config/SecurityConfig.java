@@ -29,9 +29,10 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()  // CORS preflight 허용
-                .requestMatchers("/api/v1/auth/**").permitAll()          // 로그인은 토큰 없이 허용
-                .anyRequest().authenticated()                            // 나머지는 토큰 필요
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()           // CORS preflight 허용
+                .requestMatchers("/api/v1/auth/**").permitAll()             // 로그인은 토큰 없이 허용
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll() // patient-fo 공개 조회
+                .anyRequest().authenticated()                               // 나머지는 토큰 필요
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

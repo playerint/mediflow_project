@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -24,7 +25,8 @@ public class ReportController {
      * 월별 핵심 KPI 요약 반환.
      */
     @GetMapping("/summary")
-    public ResponseEntity<ReportSummaryResponse> getSummary() {
-        return ResponseEntity.ok(reportService.getSummary());
+    public ResponseEntity<ReportSummaryResponse> getSummary(
+            @RequestParam(required = false, defaultValue = "") String period) {
+        return ResponseEntity.ok(reportService.getSummary(period));
     }
 }

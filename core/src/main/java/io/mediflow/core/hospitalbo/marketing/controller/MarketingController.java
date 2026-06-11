@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -24,7 +25,8 @@ public class MarketingController {
      * 채널별 유입 통계 및 월별 트렌드 반환.
      */
     @GetMapping("/stats")
-    public ResponseEntity<MarketingStatsResponse> getStats() {
-        return ResponseEntity.ok(marketingService.getMarketingStats());
+    public ResponseEntity<MarketingStatsResponse> getStats(
+            @RequestParam(required = false, defaultValue = "") String period) {
+        return ResponseEntity.ok(marketingService.getMarketingStats(period));
     }
 }

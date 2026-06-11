@@ -174,10 +174,15 @@ export default function LinePage() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button className="btn btn-sm">⚙ 봇 설정</button>
             <button
+              disabled
+              title="준비 중"
               className={`btn btn-sm${botKpi.status === 'on' ? '' : ' btn-primary'}`}
-              style={botKpi.status === 'on' ? { borderColor: 'var(--red)', color: 'var(--red)' } : {}}
+              style={botKpi.status === 'on'
+                ? { borderColor: 'var(--red)', color: 'var(--red)', opacity: 0.5, cursor: 'not-allowed' }
+                : { opacity: 0.5, cursor: 'not-allowed' }}
             >
               {botKpi.status === 'on' ? '⏸ 일시 정지' : '▶ 재가동'}
+              <span style={{ fontSize: 10, marginLeft: 4, color: 'var(--s400)', fontWeight: 400 }}>준비 중</span>
             </button>
           </div>
         </div>

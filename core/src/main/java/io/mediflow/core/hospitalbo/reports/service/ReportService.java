@@ -23,10 +23,11 @@ public class ReportService {
     }
 
     /**
-     * 월별 핵심 지표 요약 조회.
-     * TODO: hospitalId 와 period 파라미터를 이용해 hospital_{id} 스키마에서 집계.
+     * period 파라미터 예시: "2026-06", "2026-Q2", "" (전체).
+     * 현재는 mock 데이터라 실제 필터링은 하지 않으며,
+     * 추후 hospitalId 와 period 로 hospital_{id} 스키마에서 집계한다.
      */
-    public ReportSummaryResponse getSummary() {
+    public ReportSummaryResponse getSummary(String period) {
         requireHospitalId(); // 테넌트 격리 확인 — 반드시 유지
 
         List<ProcedureStat> topProcedures = List.of(

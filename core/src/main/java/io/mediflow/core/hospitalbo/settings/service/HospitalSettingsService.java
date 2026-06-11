@@ -2,26 +2,30 @@ package io.mediflow.core.hospitalbo.settings.service;
 
 import io.mediflow.core.common.tenant.TenantContext;
 import io.mediflow.core.hospitalbo.settings.dto.HospitalSettingsDto;
+import io.mediflow.core.hospitalbo.settings.entity.HospitalSettings;
+import io.mediflow.core.hospitalbo.settings.repository.HospitalSettingsRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * 병원 설정 서비스.
  *
- * 현재는 인메모리 맵(hospitalId → 설정)으로 동작한다.
- * 서버 재시작 시 데이터가 초기화되므로 임시 구현임을 인지할 것.
+ * 플랫폼 DB의 hospital_settings 테이블에 영속한다.
+ * 서버 재시작 후에도 설정이 유지된다.
  *
- * 추후 플랫폼 DB의 hospital_settings 테이블로 교체 예정.
- * (설정은 환자 데이터가 아니므로 플랫폼 DB에 저장해도 법적으로 무관함)
+ * closedDays 는 DB에 CSV 문자열로 저장하고, DTO에서는 List<String> 으로 노출한다.
+ * (예: "일요일,공휴일" ↔ ["일요일", "공휴일"])
  */
 @Service
+@RequiredArgsConstructor
 public class HospitalSettingsService {
 
-    /** hospitalId → 저장된 설정 (임시 인메모리 저장소) */
-    private final Map<Long, HospitalSettingsDto> settingsStore = new ConcurrentHashMap<>();
+    private final HospitalSettingsRepository settingsRepository;
 
     private Long requireHospitalId() {
         Long id = TenantContext.getHospitalId();
@@ -31,24 +35,55 @@ public class HospitalSettingsService {
 
     /**
      * 병원 설정 조회.
-     * 저장된 설정이 없으면 기본값을 반환한다.
+     * DB에 저장된 설정이 없으면 기본값 DTO를 반환한다(저장은 하지 않음).
      */
+    @Transactional(readOnly = true)
     public HospitalSettingsDto getSettings() {
         Long hospitalId = requireHospitalId();
-        return settingsStore.getOrDefault(hospitalId, defaultSettings());
+        return settingsRepository.findByHospitalId(hospitalId)
+                .map(this::toDto)
+                .orElseGet(this::defaultSettings);
     }
 
     /**
      * 병원 설정 저장.
-     * 기존 설정이 있으면 덮어쓴다.
+     * 기존 행이 있으면 UPDATE, 없으면 INSERT(upsert).
      */
+    @Transactional
     public HospitalSettingsDto saveSettings(HospitalSettingsDto request) {
         Long hospitalId = requireHospitalId();
-        settingsStore.put(hospitalId, request);
-        return request;
+        String closedDaysCsv = toCsv(request.closedDays());
+
+        HospitalSettings entity = settingsRepository.findByHospitalId(hospitalId)
+                .orElseGet(() -> HospitalSettings.builder()
+                        .hospitalId(hospitalId)
+                        .build());
+
+        entity.update(
+                request.businessHours(),
+                request.lunchBreak(),
+                closedDaysCsv,
+                request.notificationEmail(),
+                request.autoReplyEnabled()
+        );
+
+        settingsRepository.save(entity);
+        return toDto(entity);
     }
 
-    /** 기본 설정값 */
+    // ── 변환 헬퍼 ────────────────────────────────────────────────────────
+
+    private HospitalSettingsDto toDto(HospitalSettings entity) {
+        List<String> closedDays = fromCsv(entity.getClosedDays());
+        return new HospitalSettingsDto(
+                entity.getBusinessHours(),
+                entity.getLunchBreak(),
+                closedDays,
+                entity.getNotificationEmail(),
+                entity.isAutoReplyEnabled()
+        );
+    }
+
     private HospitalSettingsDto defaultSettings() {
         return new HospitalSettingsDto(
                 "09:00-18:00",
@@ -57,5 +92,22 @@ public class HospitalSettingsService {
                 "admin@hospital.com",
                 true
         );
+    }
+
+    /** List<String> → CSV 문자열 (null-safe) */
+    private String toCsv(List<String> list) {
+        if (list == null || list.isEmpty()) return "";
+        return list.stream()
+                .map(String::trim)
+                .collect(Collectors.joining(","));
+    }
+
+    /** CSV 문자열 → List<String> (null-safe) */
+    private List<String> fromCsv(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
     }
 }

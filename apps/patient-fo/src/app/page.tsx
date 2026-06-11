@@ -99,6 +99,15 @@ export default function HospitalSite() {
                 </div>
               ))}
             </div>
+            {hospital.suggestedKeywordsJa.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mb-8">
+                {hospital.suggestedKeywordsJa.map((kw, i) => (
+                  <span key={i} className="bg-white/70 text-rose-600 border border-rose-200 text-xs px-3 py-1 rounded-full">
+                    🔍 {kw}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a href={`https://line.me/R/ti/p/${hospital.lineId}`}
                 className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-colors shadow-lg">
@@ -111,6 +120,18 @@ export default function HospitalSite() {
             </div>
           </div>
         </section>
+
+        {/* クリニックについて — Step 5 일본어 카피가 있을 때만 표시 */}
+        {hospital.japaneseCopy && (
+          <section className="py-16 px-4 bg-white">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl font-bold text-center text-stone-800 mb-8">クリニックについて</h2>
+              <div className="bg-rose-50 rounded-2xl p-8 text-stone-700 text-sm leading-relaxed whitespace-pre-line">
+                {hospital.japaneseCopy}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* お悩み別ガイド */}
         <section className="py-16 px-4 bg-white">
@@ -168,7 +189,17 @@ export default function HospitalSite() {
         <section id="treatments" className="py-16 px-4 bg-white">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-center text-stone-800 mb-2">施術メニュー</h2>
-            <p className="text-center text-stone-500 text-sm mb-10">日本語でご相談いただけます</p>
+            <p className="text-center text-stone-500 text-sm mb-4">日本語でご相談いただけます</p>
+            {hospital.specialties.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mb-8">
+                {hospital.specialties.map((s, i) => (
+                  <span key={i} className="bg-rose-50 text-rose-600 border border-rose-200 text-xs px-3 py-1 rounded-full font-medium">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
+            {hospital.specialties.length === 0 && <div className="mb-6" />}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {treatments.map((t) => (
                 <div key={t.id}

@@ -1,0 +1,39 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$d = $input -join '' | ConvertFrom-Json; $fp = $d.tool_input.file_path; if ($fp -match '\\.(ts|tsx)$') { @{systemMessage='[MEDIFLOW] TypeScript 파일 수정됨. 타입 오류 확인: cd <앱폴더> && npx tsc --noEmit'} | ConvertTo-Json -Compress }",
+            "shell": "powershell",
+            "statusMessage": "TS 파일 변경 감지"
+          },
+          {
+            "type": "command",
+            "command": "$d = $input -join '' | ConvertFrom-Json; $fp = $d.tool_input.file_path; if ($fp -match '\\.java$') { @{systemMessage='[MEDIFLOW] Java 파일 수정됨 → Spring Boot 재시작 필요 (포트 8080): cd core && .\\gradlew.bat bootRun'} | ConvertTo-Json -Compress }",
+            "shell": "powershell",
+            "statusMessage": "Java 파일 변경 감지"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$d = $input -join '' | ConvertFrom-Json; $cmd = $d.tool_input.command; if ($cmd -match 'git\\s+add' -and ($cmd -match '\\.env' -or $cmd -match '(\\s|^)\\.(\\s|$)' -or $cmd -match '\\s+-A')) { @{systemMessage='⚠️ [도안경고] .env 파일이 git에 포함될 수 있습니다! .gitignore 확인 필요 (CLAUDE.md: 시크릿 하드코딩 금지)'} | ConvertTo-Json -Compress }",
+            "shell": "powershell",
+            "statusMessage": ".env 보안 확인 중"
+          }
+        ]
+      }
+    ]
+  }
+}

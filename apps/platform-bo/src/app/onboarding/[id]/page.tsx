@@ -81,10 +81,13 @@ export default function OnboardingDetailPage() {
       setOnboarding(ob)
 
       // DB에 저장된 각 단계 데이터 복원
-      const [step1, step3, step5] = await Promise.all([
+      const [step1, step3, step4, step5, step6, step7] = await Promise.all([
         getStepData(hospitalId, 1),
         getStepData(hospitalId, 3),
+        getStepData(hospitalId, 4),
         getStepData(hospitalId, 5),
+        getStepData(hospitalId, 6),
+        getStepData(hospitalId, 7),
       ])
       if (step1?.data) {
         try { setAnalyzeResult(JSON.parse(step1.data)) } catch { /* ignore */ }
@@ -92,8 +95,17 @@ export default function OnboardingDetailPage() {
       if (step3?.data) {
         try { const d = JSON.parse(step3.data); setSelectedTemplate(d.templateId ?? null) } catch { /* ignore */ }
       }
+      if (step4?.data) {
+        try { const d = JSON.parse(step4.data); if (d.files) setUploadedFiles(d.files) } catch { /* ignore */ }
+      }
       if (step5?.data) {
         try { const d = JSON.parse(step5.data); if (d.copy) setJapaneseCopy(d.copy) } catch { /* ignore */ }
+      }
+      if (step6?.data) {
+        try { setComplianceResult(JSON.parse(step6.data)) } catch { /* ignore */ }
+      }
+      if (step7?.data) {
+        try { const d = JSON.parse(step7.data); if (d.lineConnected) setLineConnected(true) } catch { /* ignore */ }
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '데이터 조회 오류')
@@ -156,12 +168,20 @@ export default function OnboardingDetailPage() {
     try {
       // 현재 단계 데이터 저장
       const step = onboarding.currentStep
-      if (step === 3 && selectedTemplate) {
+      if (step === 2) {
+        await saveStepData(hospitalId, 2, { confirmed: true }, true)
+      } else if (step === 3 && selectedTemplate) {
         await saveStepData(hospitalId, 3, { templateId: selectedTemplate }, true)
+      } else if (step === 4) {
+        await saveStepData(hospitalId, 4, { files: uploadedFiles }, true)
       } else if (step === 5 && japaneseCopy) {
         await saveStepData(hospitalId, 5, { copy: japaneseCopy }, true)
+      } else if (step === 6 && complianceResult) {
+        await saveStepData(hospitalId, 6, complianceResult, true)
       } else if (step === 7) {
         await saveStepData(hospitalId, 7, { lineConnected }, true)
+      } else if (step === 8) {
+        await saveStepData(hospitalId, 8, { confirmed: true }, true)
       }
 
       if (onboarding.currentStep < TOTAL_STEPS) {

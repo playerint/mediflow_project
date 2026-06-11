@@ -474,3 +474,109 @@ export const TEAM_MEMBERS: TeamMember[] = [
   { id: 4, name: '최다은', email: 'daeun@oleps.co.kr',    role: '검수자', status: 'active'  },
   { id: 5, name: '정수진', email: 'sujin2@oleps.co.kr',   role: '상담사', status: 'invited' },
 ]
+
+// ────────────────────────────────────────
+// 채널 & 자동 발송 (funnel)
+// ────────────────────────────────────────
+export interface FunnelChannel {
+  id:         string
+  name:       string
+  emoji:      string
+  connected:  boolean
+  accountId?: string
+}
+
+export const FUNNEL_CHANNELS: FunnelChannel[] = [
+  { id: 'line',  name: 'LINE 공식계정', emoji: '💬', connected: true,  accountId: '@oleps_clinic' },
+  { id: 'email', name: '이메일',        emoji: '📧', connected: true,  accountId: 'info@oleps.co.kr' },
+  { id: 'sms',   name: 'SMS',           emoji: '📱', connected: false },
+]
+
+export type ScenarioStatus = 'active' | 'paused'
+
+export interface FunnelScenario {
+  id:         number
+  name:       string
+  trigger:    string
+  channels:   string[]
+  sentTotal:  number
+  openRate:   number
+  status:     ScenarioStatus
+}
+
+export const FUNNEL_SCENARIOS: FunnelScenario[] = [
+  { id: 1, name: '예약 확인 메시지',   trigger: '예약 확정 즉시',   channels: ['LINE', '이메일'], sentTotal: 248, openRate: 91, status: 'active' },
+  { id: 2, name: '3일 전 리마인더',    trigger: '예약일 3일 전',   channels: ['LINE'],           sentTotal: 201, openRate: 84, status: 'active' },
+  { id: 3, name: '수술 후 케어 안내',  trigger: '수술 완료 다음날', channels: ['LINE', '이메일'], sentTotal: 87,  openRate: 78, status: 'active' },
+  { id: 4, name: '미답변 리마인더',    trigger: '미답변 24시간 후', channels: ['LINE'],           sentTotal: 33,  openRate: 62, status: 'paused' },
+  { id: 5, name: '재방문 유도',        trigger: '마지막 방문 3개월 후', channels: ['이메일'],     sentTotal: 18,  openRate: 41, status: 'paused' },
+]
+
+// ────────────────────────────────────────
+// 사이트 콘텐츠 섹션
+// ────────────────────────────────────────
+export interface SiteSection {
+  id:    string
+  name:  string
+  emoji: string
+  fields: { key: string; label: string; value: string; multiline?: boolean }[]
+}
+
+export const SITE_SECTIONS: SiteSection[] = [
+  {
+    id: 'hero', name: '히어로 섹션', emoji: '🏷',
+    fields: [
+      { key: 'tagline',    label: '메인 타이틀 (일본어)', value: '「変わったね」ではなく「綺麗になったね」と言われる手術を', multiline: false },
+      { key: 'taglineSub', label: '서브 타이틀 (일본어)',  value: '自然な美しさを追求する、韓国ソウルの美容外科クリニック' },
+      { key: 'cta',        label: 'CTA 버튼 텍스트',      value: 'LINEで無料相談' },
+    ],
+  },
+  {
+    id: 'about', name: '클리닉 소개', emoji: '🏥',
+    fields: [
+      { key: 'copy', label: '소개 본문 (일본어)', value: '오레 성형외과는 소울에 위치한 성형외과 전문 클리닉입니다.', multiline: true },
+    ],
+  },
+  {
+    id: 'faq', name: 'FAQ', emoji: '❓',
+    fields: [
+      { key: 'faq1q', label: 'Q1 질문', value: '韓国語が話せなくても大丈夫ですか？' },
+      { key: 'faq1a', label: 'Q1 답변', value: '日本語スタッフが常駐しております。' , multiline: true },
+      { key: 'faq2q', label: 'Q2 질문', value: '手術後の回復期間はどのくらいですか？' },
+      { key: 'faq2a', label: 'Q2 답변', value: '施術の種類によって異なりますが、埋没法は翌日帰国も可能です。', multiline: true },
+    ],
+  },
+]
+
+// ────────────────────────────────────────
+// 사이트 이미지 자산
+// ────────────────────────────────────────
+export interface SiteImage {
+  id:      number
+  name:    string
+  section: string
+  size:    string
+  date:    string
+  emoji:   string
+}
+
+export const SITE_IMAGES: SiteImage[] = [
+  { id: 1, name: 'hero-main.jpg',         section: '히어로',   size: '1.2 MB', date: '2026-05-12', emoji: '🖼' },
+  { id: 2, name: 'clinic-interior-1.jpg', section: '클리닉 소개', size: '0.8 MB', date: '2026-05-12', emoji: '🏥' },
+  { id: 3, name: 'clinic-interior-2.jpg', section: '클리닉 소개', size: '0.9 MB', date: '2026-05-12', emoji: '🏥' },
+  { id: 4, name: 'doctor-kim.jpg',        section: '의사 소개', size: '0.4 MB', date: '2026-05-13', emoji: '👨‍⚕️' },
+  { id: 5, name: 'doctor-park.jpg',       section: '의사 소개', size: '0.4 MB', date: '2026-05-13', emoji: '👩‍⚕️' },
+  { id: 6, name: 'before-after-1.jpg',    section: '시술 사례', size: '0.6 MB', date: '2026-06-01', emoji: '📷' },
+  { id: 7, name: 'before-after-2.jpg',    section: '시술 사례', size: '0.7 MB', date: '2026-06-01', emoji: '📷' },
+]
+
+// ────────────────────────────────────────
+// 사이트 SEO 메타 정보
+// ────────────────────────────────────────
+export const SITE_META = {
+  metaTitle: 'オルレ美容外科 | 성형외과 | ソウル 韓国',
+  metaDesc:  'ソウルの성형외과クリニック。日本語対応スタッフ常駐。LINE相談可。韓国整形 日本語対応 ソウル 美容外科。',
+  keywords:  ['韓国整形 日本語対応', '二重手術 ソウル', 'ソウル 美容外科', '江南 クリニック', '韓国 鼻整形 自然'],
+  schemaType: 'MedicalClinic',
+  gscConnected: false,
+}

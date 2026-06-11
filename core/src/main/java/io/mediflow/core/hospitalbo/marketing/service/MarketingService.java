@@ -28,9 +28,11 @@ public class MarketingService {
 
     /**
      * 채널별 유입 통계 조회.
-     * TODO: hospitalId 를 이용해 hospital_{id}.consultations 테이블에서 집계.
+     * period 파라미터 예시: "2026-06", "2026-Q2", "" (전체).
+     * 현재는 mock 데이터라 실제 필터링은 하지 않으며,
+     * 추후 hospitalId 와 period 로 hospital_{id}.consultations 테이블에서 집계한다.
      */
-    public MarketingStatsResponse getMarketingStats() {
+    public MarketingStatsResponse getMarketingStats(String period) {
         requireHospitalId(); // 테넌트 격리 확인 — 반드시 유지
 
         List<ChannelStat> channels = List.of(

@@ -211,9 +211,10 @@ export default function SettingsPage() {
                     <td style={{ textAlign: 'right' }}>
                       {m.role !== '관리자' && (
                         <button
+                          disabled
+                          title="준비 중"
                           className="btn btn-sm"
-                          onClick={() => removeMember(m.id)}
-                          style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+                          style={{ color: 'var(--red)', borderColor: 'var(--red)', opacity: 0.5, cursor: 'not-allowed' }}
                         >
                           삭제
                         </button>
@@ -249,7 +250,14 @@ export default function SettingsPage() {
                   <option>검수자</option>
                   <option>관리자</option>
                 </select>
-                <button className="btn btn-primary" onClick={handleInvite}>초대</button>
+                <button
+                  disabled
+                  title="준비 중"
+                  className="btn btn-primary"
+                  style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                >
+                  초대
+                </button>
               </div>
             </div>
           </div>
@@ -294,7 +302,14 @@ export default function SettingsPage() {
                 <StaticField label="새 비밀번호"   type="password" />
                 <StaticField label="새 비밀번호 확인" type="password" />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button className="btn btn-primary">변경</button>
+                  <button
+                    disabled
+                    title="준비 중"
+                    className="btn btn-primary"
+                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                  >
+                    변경
+                  </button>
                 </div>
               </div>
             </div>

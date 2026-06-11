@@ -9,49 +9,54 @@ import { doctors, treatments, cases, reviews, faqs } from './mock-data'
 const BASE        = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 const HOSPITAL_ID = Number(process.env.NEXT_PUBLIC_HOSPITAL_ID ?? '1')
 
-// ── 병원 기본 정보 (실제 API) ────────────────────────────────────────────────
-interface HospitalApiResponse {
-  id:            number
-  nameKr:        string
-  nameJa:        string | null
-  clinicType:    string
-  specialty:     string | null
-  plan:          string
-  status:        string
-  managerName:   string
-  managerEmail:  string
-  siteUrl:       string | null
-  phone:         string | null
-  address:       string | null
-  hours:         string | null
-  lineId:        string | null
-  instagramId:   string | null
+// ── 공개 사이트 API 응답 타입 (GET /api/v1/public/sites/{id}) ─────────────────
+interface PublicSiteApiResponse {
+  id:                  number
+  nameKr:              string
+  nameJa:              string | null
+  clinicType:          string
+  specialty:           string | null
+  phone:               string | null
+  address:             string | null
+  hours:               string | null
+  lineId:              string | null
+  instagramId:         string | null
+  siteUrl:             string | null
+  specialties:         string[]       // Step 1 분석 결과
+  suggestedKeywordsJa: string[]       // Step 1 SEO 키워드
+  japaneseCopy:        string         // Step 5 일본어 카피
 }
 
 export interface HospitalInfo {
-  nameJa:     string
-  nameKr:     string
-  tagline:    string
-  taglineSub: string
-  phone:      string
-  address:    string
-  hours:      string
-  lineId:     string
-  instagramId: string
-  clinicType: string
-  specialty:  string | null
+  nameJa:              string
+  nameKr:              string
+  tagline:             string
+  taglineSub:          string
+  phone:               string
+  address:             string
+  hours:               string
+  lineId:              string
+  instagramId:         string
+  clinicType:          string
+  specialty:           string | null
+  specialties:         string[]
+  suggestedKeywordsJa: string[]
+  japaneseCopy:        string
   stats: { value: string; label: string }[]
 }
 
 // mock 기본값 (API에 없는 필드)
 const MOCK_DEFAULTS = {
-  tagline:    '「変わったね」ではなく「綺麗になったね」と言われる手術を',
-  taglineSub: '自然な美しさを追求する、韓国ソウルの美容外科クリニック',
-  phone:      '+82-2-1234-5678',
-  address:    'ソウル市江南区論峴洞 123',
-  hours:      '月〜土 9:00–18:00',
-  lineId:     '@olle_clinic',
-  instagramId: '@olle_clinic_jp',
+  tagline:             '「変わったね」ではなく「綺麗になったね」と言われる手術を',
+  taglineSub:          '自然な美しさを追求する、韓国ソウルの美容外科クリニック',
+  phone:               '+82-2-1234-5678',
+  address:             'ソウル市江南区論峴洞 123',
+  hours:               '月〜土 9:00–18:00',
+  lineId:              '@olle_clinic',
+  instagramId:         '@olle_clinic_jp',
+  specialties:         [] as string[],
+  suggestedKeywordsJa: [] as string[],
+  japaneseCopy:        '',
   stats: [
     { value: '28,000+', label: '症例数' },
     { value: '月150+',  label: '日本人患者数' },
@@ -62,24 +67,27 @@ const MOCK_DEFAULTS = {
 
 export async function getHospitalInfo(): Promise<HospitalInfo> {
   try {
-    const res = await fetch(`${BASE}/api/v1/hospitals/${HOSPITAL_ID}`, {
+    const res = await fetch(`${BASE}/api/v1/public/sites/${HOSPITAL_ID}`, {
       cache: 'no-store',
     })
-    if (!res.ok) throw new Error('병원 정보 조회 실패')
-    const data: HospitalApiResponse = await res.json()
+    if (!res.ok) throw new Error('사이트 데이터 조회 실패')
+    const data: PublicSiteApiResponse = await res.json()
     return {
-      nameJa:      data.nameJa ?? data.nameKr,
-      nameKr:      data.nameKr,
-      clinicType:  data.clinicType,
-      specialty:   data.specialty ?? null,
-      phone:       data.phone       ?? MOCK_DEFAULTS.phone,
-      address:     data.address     ?? MOCK_DEFAULTS.address,
-      hours:       data.hours       ?? MOCK_DEFAULTS.hours,
-      lineId:      data.lineId      ?? MOCK_DEFAULTS.lineId,
-      instagramId: data.instagramId ?? MOCK_DEFAULTS.instagramId,
-      tagline:     MOCK_DEFAULTS.tagline,
-      taglineSub:  MOCK_DEFAULTS.taglineSub,
-      stats:       MOCK_DEFAULTS.stats,
+      nameJa:              data.nameJa              ?? data.nameKr,
+      nameKr:              data.nameKr,
+      clinicType:          data.clinicType,
+      specialty:           data.specialty            ?? null,
+      phone:               data.phone                ?? MOCK_DEFAULTS.phone,
+      address:             data.address              ?? MOCK_DEFAULTS.address,
+      hours:               data.hours                ?? MOCK_DEFAULTS.hours,
+      lineId:              data.lineId               ?? MOCK_DEFAULTS.lineId,
+      instagramId:         data.instagramId          ?? MOCK_DEFAULTS.instagramId,
+      specialties:         data.specialties?.length  ? data.specialties         : MOCK_DEFAULTS.specialties,
+      suggestedKeywordsJa: data.suggestedKeywordsJa?.length ? data.suggestedKeywordsJa : MOCK_DEFAULTS.suggestedKeywordsJa,
+      japaneseCopy:        data.japaneseCopy         || MOCK_DEFAULTS.japaneseCopy,
+      tagline:             MOCK_DEFAULTS.tagline,
+      taglineSub:          MOCK_DEFAULTS.taglineSub,
+      stats:               MOCK_DEFAULTS.stats,
     }
   } catch {
     // API 연결 실패 시 mock 기본값 사용
