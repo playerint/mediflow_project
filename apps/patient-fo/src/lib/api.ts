@@ -4,7 +4,7 @@
 // 나중에 백엔드가 완성되면 이 파일만 수정하면 됩니다
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { doctors, treatments, cases, reviews, faqs } from './mock-data'
+import { doctors as mockDoctors, treatments as mockTreatments, cases, reviews, faqs as mockFaqs } from './mock-data'
 
 const BASE        = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 const HOSPITAL_ID = Number(process.env.NEXT_PUBLIC_HOSPITAL_ID ?? '1')
@@ -25,6 +25,9 @@ interface PublicSiteApiResponse {
   specialties:         string[]       // Step 1 분석 결과
   suggestedKeywordsJa: string[]       // Step 1 SEO 키워드
   japaneseCopy:        string         // Step 5 일본어 카피
+  doctors:             Array<{ nameJa: string; specialty?: string; experience?: string; gradient?: string }>
+  treatments:          Array<{ nameJa: string; duration?: string; category?: string; emoji?: string }>
+  faqs:                Array<{ question?: string; answer?: string }>
 }
 
 export interface HospitalInfo {
@@ -42,7 +45,10 @@ export interface HospitalInfo {
   specialties:         string[]
   suggestedKeywordsJa: string[]
   japaneseCopy:        string
-  stats: { value: string; label: string }[]
+  stats:               { value: string; label: string }[]
+  doctors:             Array<{ nameJa: string; specialty?: string; experience?: string; gradient?: string }>
+  treatments:          Array<{ nameJa: string; duration?: string; category?: string; emoji?: string }>
+  faqs:                Array<{ question?: string; answer?: string }>
 }
 
 // mock 기본값 (API에 없는 필드)
@@ -88,6 +94,11 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
       tagline:             MOCK_DEFAULTS.tagline,
       taglineSub:          MOCK_DEFAULTS.taglineSub,
       stats:               MOCK_DEFAULTS.stats,
+      doctors:             data.doctors?.length      ? data.doctors    : mockDoctors,
+      treatments:          data.treatments?.length   ? data.treatments : mockTreatments,
+      faqs:                data.faqs?.length
+                             ? data.faqs
+                             : mockFaqs.map(f => ({ question: f.q, answer: f.a })),
     }
   } catch {
     // API 연결 실패 시 mock 기본값 사용
@@ -97,14 +108,17 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
       clinicType: '성형외과',
       specialty:  null,
       ...MOCK_DEFAULTS,
+      doctors:    mockDoctors,
+      treatments: mockTreatments,
+      faqs:       mockFaqs.map(f => ({ question: f.q, answer: f.a })),
     }
   }
 }
 
 // ── 이하 항목은 아직 백엔드 미구현 → mock-data.ts 그대로 반환 ────────────────
 
-export function getDoctors()    { return doctors }
-export function getTreatments() { return treatments }
+export function getDoctors()    { return mockDoctors }
+export function getTreatments() { return mockTreatments }
 export function getCases()      { return cases }
 export function getReviews()    { return reviews }
-export function getFaqs()       { return faqs }
+export function getFaqs()       { return mockFaqs }

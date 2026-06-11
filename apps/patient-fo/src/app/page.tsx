@@ -1,15 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
 import {
-  getHospitalInfo, getDoctors, getTreatments, getCases, getReviews, getFaqs,
+  getHospitalInfo, getCases, getReviews,
   type HospitalInfo,
 } from '@/lib/api'
 
-const doctors    = getDoctors()
-const treatments = getTreatments()
-const cases      = getCases()
-const reviews    = getReviews()
-const faqs       = getFaqs()
+const cases   = getCases()
+const reviews = getReviews()
 
 export default function HospitalSite() {
   const [openFaq,       setOpenFaq]       = useState<number | null>(null)
@@ -164,16 +161,15 @@ export default function HospitalSite() {
             <h2 className="text-2xl font-bold text-center text-stone-800 mb-2">ドクター紹介</h2>
             <p className="text-center text-stone-500 text-sm mb-10">全員、韓国専門医資格取得の経験豊富な医師です</p>
             <div className="grid md:grid-cols-3 gap-6">
-              {doctors.map((doc) => (
-                <div key={doc.id} className="bg-white rounded-3xl shadow-sm overflow-hidden">
-                  <div className={`h-36 bg-gradient-to-br ${doc.gradient} flex items-center justify-center`}>
+              {hospital.doctors.map((doc, idx) => (
+                <div key={idx} className="bg-white rounded-3xl shadow-sm overflow-hidden">
+                  <div className={`h-36 bg-gradient-to-br ${doc.gradient ?? 'from-rose-100 to-pink-200'} flex items-center justify-center`}>
                     <span className="text-5xl">👨‍⚕️</span>
                   </div>
                   <div className="p-5">
                     <p className="text-xs text-rose-500 font-medium mb-1">{doc.specialty}</p>
                     <h3 className="font-bold text-stone-800 mb-1">{doc.nameJa}</h3>
                     <p className="text-xs text-stone-400 mb-3">{doc.experience}</p>
-                    <p className="text-sm text-stone-600 leading-relaxed">{doc.philosophy}</p>
                     <a href={`https://line.me/R/ti/p/${hospital.lineId}`}
                       className="mt-4 block text-center text-sm text-emerald-600 border border-emerald-400 rounded-full py-2 hover:bg-emerald-50 transition-colors">
                       相談を申し込む
@@ -201,10 +197,10 @@ export default function HospitalSite() {
             )}
             {hospital.specialties.length === 0 && <div className="mb-6" />}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {treatments.map((t) => (
-                <div key={t.id}
+              {hospital.treatments.map((t, idx) => (
+                <div key={idx}
                   className="border border-stone-100 rounded-2xl p-5 hover:shadow-md hover:border-rose-200 transition-all bg-stone-50">
-                  <span className="text-2xl">{t.emoji}</span>
+                  <span className="text-2xl">{t.emoji ?? '✨'}</span>
                   <p className="text-xs text-rose-400 mt-2 mb-1">{t.category}</p>
                   <h3 className="font-medium text-stone-800 text-sm leading-snug">{t.nameJa}</h3>
                   <p className="text-xs text-stone-400 mt-2">施術時間 {t.duration}</p>
@@ -298,16 +294,16 @@ export default function HospitalSite() {
             <h2 className="text-2xl font-bold text-center text-stone-800 mb-2">よくある質問</h2>
             <p className="text-center text-stone-500 text-sm mb-10">解決しない場合はLINEでお気軽にどうぞ</p>
             <div className="space-y-3">
-              {faqs.map((f, i) => (
+              {hospital.faqs.map((f, i) => (
                 <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className="w-full flex items-center justify-between px-5 py-4 text-left">
-                    <span className="font-medium text-stone-800 text-sm pr-4">Q. {f.q}</span>
+                    <span className="font-medium text-stone-800 text-sm pr-4">Q. {f.question}</span>
                     <span className="text-rose-400 text-xl flex-shrink-0">{openFaq === i ? '−' : '+'}</span>
                   </button>
                   {openFaq === i && (
                     <div className="px-5 pb-5 text-sm text-stone-600 leading-relaxed border-t border-stone-50 pt-3">
-                      A. {f.a}
+                      A. {f.answer}
                     </div>
                   )}
                 </div>

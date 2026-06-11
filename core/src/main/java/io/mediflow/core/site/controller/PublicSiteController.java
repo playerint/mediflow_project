@@ -37,11 +37,14 @@ public class PublicSiteController {
     public ResponseEntity<PublicSiteResponse> getSiteData(@PathVariable Long hospitalId) {
         HospitalResponse hospital = hospitalService.findById(hospitalId);
 
-        List<String> specialties         = List.of();
-        List<String> suggestedKeywordsJa = List.of();
-        String       japaneseCopy        = "";
+        List<String>            specialties         = List.of();
+        List<String>            suggestedKeywordsJa = List.of();
+        List<Map<String,Object>> faqs               = List.of();
+        List<Map<String,Object>> doctors            = List.of();
+        List<Map<String,Object>> treatments         = List.of();
+        String                  japaneseCopy        = "";
 
-        // Step 1 — 분석 결과 (specialties, suggestedKeywordsJa)
+        // Step 1 — 분석 결과 (specialties, suggestedKeywordsJa, faqs)
         StepDataResponse step1 = onboardingService.getStepData(hospitalId, 1);
         if (step1 != null && step1.data() != null) {
             try {
@@ -61,8 +64,40 @@ public class PublicSiteController {
                             .map(String.class::cast)
                             .toList();
                 }
+                Object faqObj = d.get("faqs");
+                if (faqObj instanceof List<?> list) {
+                    faqs = list.stream()
+                            .filter(m -> m instanceof Map)
+                            .map(m -> (Map<String,Object>) m)
+                            .toList();
+                }
             } catch (Exception e) {
                 log.warn("Step 1 데이터 파싱 실패 hospitalId={}", hospitalId, e);
+            }
+        }
+
+        // Step 2 — 의료진(doctors) · 시술(treatments)
+        StepDataResponse step2 = onboardingService.getStepData(hospitalId, 2);
+        if (step2 != null && step2.data() != null) {
+            try {
+                Map<String, Object> d = objectMapper.readValue(
+                        step2.data(), new TypeReference<>() {});
+                Object doc = d.get("doctors");
+                if (doc instanceof List<?> list) {
+                    doctors = list.stream()
+                            .filter(m -> m instanceof Map)
+                            .map(m -> (Map<String,Object>) m)
+                            .toList();
+                }
+                Object tr = d.get("treatments");
+                if (tr instanceof List<?> list) {
+                    treatments = list.stream()
+                            .filter(m -> m instanceof Map)
+                            .map(m -> (Map<String,Object>) m)
+                            .toList();
+                }
+            } catch (Exception e) {
+                log.warn("Step 2 데이터 파싱 실패 hospitalId={}", hospitalId, e);
             }
         }
 
@@ -93,6 +128,9 @@ public class PublicSiteController {
                 .siteUrl(hospital.getSiteUrl())
                 .specialties(specialties)
                 .suggestedKeywordsJa(suggestedKeywordsJa)
+                .faqs(faqs)
+                .doctors(doctors)
+                .treatments(treatments)
                 .japaneseCopy(japaneseCopy)
                 .build();
 

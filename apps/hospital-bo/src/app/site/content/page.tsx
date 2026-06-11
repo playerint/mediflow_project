@@ -52,6 +52,33 @@ function buildSectionsFromStepData(stepData: Record<number, { data: string }>): 
       }
     }
 
+    // Step 2 — 의료진·시술 개수 표시 (편집 UI는 추후 구현)
+    const step2 = stepData[2]
+    if (step2?.data) {
+      const d2 = JSON.parse(step2.data)
+      const doctorCount    = Array.isArray(d2.doctors)    ? d2.doctors.length    : 0
+      const treatmentCount = Array.isArray(d2.treatments) ? d2.treatments.length : 0
+      sections.push({
+        id: 'doctors', name: '의료진 관리', emoji: '👨‍⚕️',
+        fields: [
+          {
+            key: 'info',
+            label: '의료진 현황',
+            value: doctorCount > 0
+              ? `현재 ${doctorCount}명 등록됨 (상세 편집은 온보딩 Step 2에서 가능합니다)`
+              : '등록된 의료진 없음 (온보딩 Step 2에서 등록하세요)',
+          },
+          {
+            key: 'treatmentInfo',
+            label: '시술 현황',
+            value: treatmentCount > 0
+              ? `${treatmentCount}개 시술 등록됨 (상세 편집은 온보딩 Step 2에서 가능합니다)`
+              : '등록된 시술 없음 (온보딩 Step 2에서 등록하세요)',
+          },
+        ],
+      })
+    }
+
     return sections.length > 0 ? sections : null
   } catch {
     return null

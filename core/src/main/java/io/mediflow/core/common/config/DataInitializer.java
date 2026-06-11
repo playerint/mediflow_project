@@ -1,5 +1,7 @@
 package io.mediflow.core.common.config;
 
+import io.mediflow.core.onboarding.entity.OnboardingStepData;
+import io.mediflow.core.onboarding.repository.OnboardingStepDataRepository;
 import io.mediflow.core.platformbo.cs.entity.CsTicket;
 import io.mediflow.core.platformbo.cs.repository.CsTicketRepository;
 import io.mediflow.core.platformbo.marketing.entity.HospitalMarketingStats;
@@ -31,6 +33,7 @@ public class DataInitializer implements ApplicationRunner {
     private final PlatformNotificationRepository    notificationRepository;
     private final CsTicketRepository                csTicketRepository;
     private final HospitalMarketingStatsRepository  marketingStatsRepository;
+    private final OnboardingStepDataRepository      stepDataRepository;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -44,6 +47,7 @@ public class DataInitializer implements ApplicationRunner {
         seedNotifications();
         seedCsTickets();
         seedMarketingStats();
+        seedStep2Content();
     }
 
     private void createIfAbsent(String username, String rawPw, String role, Long hospitalId) {
@@ -223,5 +227,40 @@ public class DataInitializer implements ApplicationRunner {
         ));
 
         log.info("=== 병원 마케팅 지표 초기 데이터 5건 삽입 완료 ===");
+    }
+
+    /** hospital_id=1 의 Step 2 (의료진·시술) 초기 데이터 삽입 (없을 때만) */
+    private void seedStep2Content() {
+        if (stepDataRepository.findByHospitalIdAndStepNumber(1L, 2).isPresent()) {
+            return;
+        }
+
+        OnboardingStepData entity = OnboardingStepData.builder()
+                .hospitalId(1L)
+                .stepNumber(2)
+                .data("""
+                {
+                  "doctors": [
+                    {"nameJa": "キム・ジフン 院長", "specialty": "目元・埋没法", "experience": "美容外科専門医 15年", "gradient": "from-rose-100 to-pink-200"},
+                    {"nameJa": "イ・スヨン 副院長", "specialty": "鼻整形・輪郭手術", "experience": "形成外科専門医 12年", "gradient": "from-indigo-100 to-purple-200"},
+                    {"nameJa": "パク・ミン 医師", "specialty": "皮膚科・レーザー治療", "experience": "皮膚科専門医 8年", "gradient": "from-emerald-100 to-teal-200"}
+                  ],
+                  "treatments": [
+                    {"nameJa": "二重整形（埋没法）", "duration": "30分", "category": "目元", "emoji": "👁️"},
+                    {"nameJa": "二重整形（切開法）", "duration": "60分", "category": "目元", "emoji": "👁️"},
+                    {"nameJa": "鼻整形（プロテーゼ）", "duration": "90分", "category": "鼻", "emoji": "👃"},
+                    {"nameJa": "エラボトックス", "duration": "15分", "category": "輪郭", "emoji": "💉"},
+                    {"nameJa": "脂肪吸引", "duration": "120分", "category": "ボディ", "emoji": "✨"},
+                    {"nameJa": "目頭切開", "duration": "45分", "category": "目元", "emoji": "👁️"},
+                    {"nameJa": "ヒアルロン酸注入", "duration": "20分", "category": "スキン", "emoji": "💧"},
+                    {"nameJa": "フェイスリフト", "duration": "180分", "category": "輪郭", "emoji": "✨"},
+                    {"nameJa": "レーザートーニング", "duration": "30分", "category": "スキン", "emoji": "💫"}
+                  ]
+                }
+                """)
+                .build();
+
+        stepDataRepository.save(entity);
+        log.info("=== hospital_id=1 Step 2 의료진·시술 초기 데이터 삽입 완료 ===");
     }
 }

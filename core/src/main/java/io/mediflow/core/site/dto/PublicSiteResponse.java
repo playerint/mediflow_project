@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Builder
@@ -24,6 +25,13 @@ public class PublicSiteResponse {
     // Step 1 분석 결과
     private List<String> specialties;
     private List<String> suggestedKeywordsJa;
+
+    // Step 1 FAQ
+    private List<Map<String,Object>> faqs;
+
+    // Step 2 의료진·시술
+    private List<Map<String,Object>> doctors;
+    private List<Map<String,Object>> treatments;
 
     // Step 5 일본어 카피
     private String japaneseCopy;
