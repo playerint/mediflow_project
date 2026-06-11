@@ -1,12 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import {
-  getHospitalInfo, getCases, getReviews,
+  getHospitalInfo, getCases,
   type HospitalInfo,
 } from '@/lib/api'
 
-const cases   = getCases()
-const reviews = getReviews()
+const cases = getCases()
 
 export default function HospitalSite() {
   const [openFaq,       setOpenFaq]       = useState<number | null>(null)
@@ -250,10 +249,10 @@ export default function HospitalSite() {
             <h2 className="text-2xl font-bold text-center text-stone-800 mb-2">患者様の声</h2>
             <p className="text-center text-stone-500 text-sm mb-10">日本から来院された方々のリアルな声</p>
             <div className="grid md:grid-cols-3 gap-6">
-              {reviews.map((r) => (
-                <div key={r.id} className="bg-rose-50 rounded-2xl p-6">
+              {hospital.reviews.map((r, idx) => (
+                <div key={idx} className="bg-rose-50 rounded-2xl p-6">
                   <div className="flex items-center gap-1 mb-3">
-                    {[...Array(r.rating)].map((_, i) => (
+                    {[...Array(r.rating ?? 5)].map((_, i) => (
                       <span key={i} className="text-amber-400 text-sm">★</span>
                     ))}
                   </div>

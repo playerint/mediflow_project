@@ -4,7 +4,7 @@
 // 나중에 백엔드가 완성되면 이 파일만 수정하면 됩니다
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { doctors as mockDoctors, treatments as mockTreatments, cases, reviews, faqs as mockFaqs } from './mock-data'
+import { doctors as mockDoctors, treatments as mockTreatments, cases, reviews as mockReviews, faqs as mockFaqs } from './mock-data'
 
 const BASE        = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'
 const HOSPITAL_ID = Number(process.env.NEXT_PUBLIC_HOSPITAL_ID ?? '1')
@@ -28,6 +28,7 @@ interface PublicSiteApiResponse {
   doctors:             Array<{ nameJa: string; specialty?: string; experience?: string; gradient?: string }>
   treatments:          Array<{ nameJa: string; duration?: string; category?: string; emoji?: string }>
   faqs:                Array<{ question?: string; answer?: string }>
+  reviews:             Array<{ name?: string; treatment?: string; text?: string; rating?: number }>
 }
 
 export interface HospitalInfo {
@@ -49,6 +50,7 @@ export interface HospitalInfo {
   doctors:             Array<{ nameJa: string; specialty?: string; experience?: string; gradient?: string }>
   treatments:          Array<{ nameJa: string; duration?: string; category?: string; emoji?: string }>
   faqs:                Array<{ question?: string; answer?: string }>
+  reviews:             Array<{ name?: string; treatment?: string; text?: string; rating?: number }>
 }
 
 // mock 기본값 (API에 없는 필드)
@@ -99,6 +101,9 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
       faqs:                data.faqs?.length
                              ? data.faqs
                              : mockFaqs.map(f => ({ question: f.q, answer: f.a })),
+      reviews:             data.reviews?.length
+                             ? data.reviews
+                             : mockReviews.map(r => ({ name: r.name, treatment: r.treatment, text: r.text, rating: r.rating })),
     }
   } catch {
     // API 연결 실패 시 mock 기본값 사용
@@ -111,6 +116,7 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
       doctors:    mockDoctors,
       treatments: mockTreatments,
       faqs:       mockFaqs.map(f => ({ question: f.q, answer: f.a })),
+      reviews:    mockReviews.map(r => ({ name: r.name, treatment: r.treatment, text: r.text, rating: r.rating })),
     }
   }
 }
@@ -120,5 +126,5 @@ export async function getHospitalInfo(): Promise<HospitalInfo> {
 export function getDoctors()    { return mockDoctors }
 export function getTreatments() { return mockTreatments }
 export function getCases()      { return cases }
-export function getReviews()    { return reviews }
+export function getReviews()    { return mockReviews }
 export function getFaqs()       { return mockFaqs }
