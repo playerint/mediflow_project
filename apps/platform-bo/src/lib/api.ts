@@ -217,3 +217,52 @@ export async function createHospital(data: HospitalCreateDto): Promise<HospitalD
   }
   return res.json()
 }
+
+// ── CRM 통계 ──────────────────────────────────────────────────
+export interface HospitalCrmSummaryDto {
+  hospitalId:   number
+  hospitalName: string
+  newCount:     number
+  pendingCount: number
+  repliedCount: number
+}
+
+export async function getPlatformCrmStats(): Promise<HospitalCrmSummaryDto[]> {
+  const res = await fetch(`${BASE}/api/v1/platform/crm/stats`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`CRM 통계 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+// ── 알림 ──────────────────────────────────────────────────────
+export interface PlatformNotificationDto {
+  id:        number
+  type:      string
+  title:     string
+  body:      string
+  read:      boolean
+  createdAt: string
+}
+
+export async function getPlatformNotifications(): Promise<PlatformNotificationDto[]> {
+  const res = await fetch(`${BASE}/api/v1/platform/notifications`, {
+    cache: 'no-store', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`알림 조회 실패 (${res.status})`)
+  return res.json()
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/platform/notifications/${id}/read`, {
+    method: 'PATCH', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`알림 읽음 처리 실패 (${res.status})`)
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/platform/notifications/read-all`, {
+    method: 'POST', headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`전체 읽음 처리 실패 (${res.status})`)
+}
